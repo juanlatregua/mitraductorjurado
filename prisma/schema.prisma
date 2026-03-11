@@ -54,14 +54,15 @@ enum InvoiceStatus {
 // ─── USUARIOS ─────────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  tenantId  String   @default("default")
-  email     String   @unique
-  name      String?
-  image     String?
-  role      Role     @default(client)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  tenantId      String    @default("default")
+  email         String    @unique
+  emailVerified DateTime? // requerido por NextAuth PrismaAdapter
+  name          String?
+  image         String?
+  role          Role      @default(client)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   // Relaciones
   translatorProfile TranslatorProfile?
@@ -142,7 +143,6 @@ model TranslatorProfile {
   languagePairs LanguagePair[]
   specialties   Specialty[]
   availability  Availability[]
-  orders        Order[]        @relation("TranslatorOrders")
 
   @@index([tenantId])
   @@index([verified])

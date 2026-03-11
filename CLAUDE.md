@@ -194,14 +194,17 @@ VERIFACTU_NIF=
 
 ## Sprint actual
 
-**S0 — Cimientos**
-- [ ] Repo + CLAUDE.md ✓
-- [ ] PostgreSQL con RLS
-- [ ] Schema Prisma completo con tenantId
-- [ ] NextAuth con roles
-- [ ] Middleware protección de rutas
-- [ ] Variables de entorno
-- [ ] Deploy inicial Vercel
+**S0 — Cimientos** (completado)
+- [x] S0-01: Repo GitHub + ramas main/dev/sprint
+- [x] S0-02: PostgreSQL con RLS (rls-setup.sql + middleware Prisma)
+- [x] S0-03: Schema Prisma completo — 16 modelos, todos con tenantId
+- [x] S0-04: NextAuth — email (Resend) + Google OAuth, JWT con role
+- [x] S0-05: Middleware protección de rutas por rol
+- [x] S0-06: Variables de entorno (.env.example completo)
+- [x] S0-07: CLAUDE.md master document
+- [x] S0-08: Build verificado, listo para Vercel
+
+**Siguiente: S1 — Auth completo + dashboards básicos**
 
 ---
 
