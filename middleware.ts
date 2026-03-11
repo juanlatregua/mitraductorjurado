@@ -17,6 +17,18 @@ export default withAuth(
       );
     }
 
+    // Redirigir a onboarding si perfil incompleto
+    if (
+      path.startsWith("/dashboard") &&
+      token &&
+      !token.onboarded
+    ) {
+      const role = token.role === "translator" ? "translator" : "client";
+      return NextResponse.redirect(
+        new URL(`/auth/onboarding?role=${role}`, req.url)
+      );
+    }
+
     // Rutas de admin — solo role=admin
     if (path.startsWith("/dashboard/admin") && token?.role !== "admin") {
       return unauthorized();
