@@ -1,0 +1,364 @@
+// prisma/schema.prisma
+// mitraductorjurado.es
+// REGLA: tenantId en TODOS los modelos sin excepción
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  translator
+  client
+  admin
+}
+
+enum OrderStatus {
+  pending
+  quoted
+  accepted
+  in_progress
+  delivered
+  closed
+  cancelled
+}
+
+enum DocumentCategory {
+  academico
+  notarial
+  administrativo
+  economico
+  juridico
+}
+
+enum SignatureStatus {
+  pending
+  sent
+  signed
+  rejected
+}
+
+enum InvoiceStatus {
+  pending
+  sent
+  accepted
+  rejected
+}
+
+// ─── USUARIOS ─────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String   @default("default")
+  email     String   @unique
+  name      String?
+  image     String?
+  role      Role     @default(client)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  translatorProfile TranslatorProfile?
+  clientOrders      Order[]            @relation("ClientOrders")
+  translatorOrders  Order[]            @relation("TranslatorOrders")
+  assignedOrders    OrderAssignment[]  @relation("AssignedTranslator")
+  reviews           Review[]           @relation("ClientReviews")
+  receivedReviews   Review[]           @relation("TranslatorReviews")
+  accounts          Account[]
+  sessions          Session[]
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+// ─── NEXTAUTH ─────────────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── PERFIL TRADUCTOR ─────────────────────────────────────────────────────────
+
+model TranslatorProfile {
+  id              String   @id @default(cuid())
+  tenantId        String   @default("default")
+  userId          String   @unique
+  maecNumber      String   // ej: N.3850
+  verified        Boolean  @default(false)
+  bio             String?  @db.Text
+  province        String?
+  photoUrl        String?
+  ratePerWord     Float?   // €/palabra
+  rateMinimum     Float?   // tarifa mínima €
+  avgRating       Float    @default(0)
+  reviewCount     Int      @default(0)
+  stripeAccountId String?  // Stripe Connect Express
+  stripeOnboarded Boolean  @default(false)
+  widgetDomain    String?  // dominio autorizado para el widget
+  widgetConfig    Json?    // colores, campos visibles, etc.
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  languagePairs LanguagePair[]
+  specialties   Specialty[]
+  availability  Availability[]
+  orders        Order[]        @relation("TranslatorOrders")
+
+  @@index([tenantId])
+  @@index([verified])
+  @@index([province])
+}
+
+model LanguagePair {
+  id           String @id @default(cuid())
+  tenantId     String @default("default")
+  translatorId String
+  sourceLang   String // ISO 639-1: fr, en, de, it, pt...
+  targetLang   String // es (casi siempre)
+
+  translator TranslatorProfile @relation(fields: [translatorId], references: [id], onDelete: Cascade)
+
+  @@unique([translatorId, sourceLang, targetLang])
+  @@index([tenantId])
+  @@index([sourceLang, targetLang])
+}
+
+model Specialty {
+  id           String           @id @default(cuid())
+  tenantId     String           @default("default")
+  translatorId String
+  category     DocumentCategory
+
+  translator TranslatorProfile @relation(fields: [translatorId], references: [id], onDelete: Cascade)
+
+  @@unique([translatorId, category])
+  @@index([tenantId])
+}
+
+model Availability {
+  id           String   @id @default(cuid())
+  tenantId     String   @default("default")
+  translatorId String
+  weekStart    DateTime // lunes de la semana (00:00:00)
+  slots        Json     // [{ day: "mon", from: "09:00", to: "14:00" }, ...]
+  updatedAt    DateTime @updatedAt
+
+  translator TranslatorProfile @relation(fields: [translatorId], references: [id], onDelete: Cascade)
+
+  @@unique([translatorId, weekStart])
+  @@index([tenantId])
+  @@index([weekStart])
+}
+
+// ─── BASE DE PLANTILLAS ───────────────────────────────────────────────────────
+
+model DocumentTemplate {
+  id          String           @id @default(cuid())
+  tenantId    String           @default("default")
+  category    DocumentCategory
+  type        String           // ej: titulo-universitario, acta-nacimiento, kbis
+  language    String           // idioma origen: fr, de, en, it
+  label       String           // nombre legible: "Título universitario (FR)"
+  structure   Json             // { fixedFields: [...], variables: [...] }
+  exampleAnon String?          @db.Text // ejemplo anonimizado
+  active      Boolean          @default(true)
+  createdBy   String           // userId del admin
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([category, type, language])
+  @@index([tenantId])
+  @@index([category, language])
+}
+
+// ─── PEDIDOS ──────────────────────────────────────────────────────────────────
+
+model Order {
+  id             String      @id @default(cuid())
+  tenantId       String      @default("default")
+  clientId       String
+  translatorId   String
+  status         OrderStatus @default(pending)
+  sourceLang     String
+  targetLang     String
+  documentType   String?     // tipo reconocido automáticamente
+  originalFileUrl String?    // PDF original (Vercel Blob)
+  translatedFileUrl String?  // PDF final firmado
+  price          Float?      // precio acordado
+  expiresAt      DateTime?   // expiración del presupuesto
+  notes          String?     @db.Text
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // Relaciones
+  client     User              @relation("ClientOrders", fields: [clientId], references: [id])
+  translator User              @relation("TranslatorOrders", fields: [translatorId], references: [id])
+  assignment OrderAssignment?
+  payment    Payment?
+  invoice    Invoice?
+  review     Review?
+  signature  Signature?
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([translatorId])
+  @@index([status])
+}
+
+model OrderAssignment {
+  id           String   @id @default(cuid())
+  tenantId     String   @default("default")
+  orderId      String   @unique
+  assignedToId String   // colega que ejecuta la traducción
+  brokerMargin Float    // comisión en € de quien deriva
+  agreedPrice  Float    // precio pactado con el colega
+  acceptedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assignedTo User  @relation("AssignedTranslator", fields: [assignedToId], references: [id])
+
+  @@index([tenantId])
+  @@index([assignedToId])
+}
+
+// ─── PAGOS ────────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                    String   @id @default(cuid())
+  tenantId              String   @default("default")
+  orderId               String   @unique
+  stripePaymentIntentId String   @unique
+  amount                Float    // total cobrado al cliente (€)
+  platformFee           Float    // comisión plataforma (€)
+  translatorAmount      Float    // lo que recibe el traductor (€)
+  currency              String   @default("eur")
+  status                String   // succeeded | pending | failed
+  createdAt             DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ─── FACTURACIÓN (VERIFACTU) ──────────────────────────────────────────────────
+
+model Invoice {
+  id           String        @id @default(cuid())
+  tenantId     String        @default("default")
+  orderId      String        @unique
+  invoiceNumber String       @unique // formato: MTJ-YYYYMM-XXXX
+  issuerId     String        // userId del traductor que emite
+  recipientId  String        // userId del cliente
+  amount       Float
+  vatAmount    Float
+  totalAmount  Float
+  xmlContent   String?       @db.Text // XML Verifactu
+  pdfUrl       String?       // PDF factura (Vercel Blob)
+  status       InvoiceStatus @default(pending)
+  sentToAeat   Boolean       @default(false)
+  aeatResponse String?       @db.Text
+  createdAt    DateTime      @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([issuerId])
+  @@index([invoiceNumber])
+}
+
+// ─── FIRMA ELECTRÓNICA (SIGNATURIT / eIDAS) ───────────────────────────────────
+
+model Signature {
+  id                  String          @id @default(cuid())
+  tenantId            String          @default("default")
+  orderId             String          @unique
+  signaturitId        String?         // ID del sobre en Signaturit
+  status              SignatureStatus @default(pending)
+  signedDocumentUrl   String?         // URL del documento firmado
+  signedAt            DateTime?
+  createdAt           DateTime        @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ─── REVIEWS ──────────────────────────────────────────────────────────────────
+
+model Review {
+  id           String   @id @default(cuid())
+  tenantId     String   @default("default")
+  orderId      String   @unique
+  clientId     String
+  translatorId String
+  rating       Int      // 1-5
+  comment      String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  client     User  @relation("ClientReviews", fields: [clientId], references: [id])
+  translator User  @relation("TranslatorReviews", fields: [translatorId], references: [id])
+
+  @@index([tenantId])
+  @@index([translatorId])
+}
+
+// ─── WIDGET LEADS ─────────────────────────────────────────────────────────────
+
+model WidgetLead {
+  id           String   @id @default(cuid())
+  tenantId     String   @default("default")
+  translatorId String
+  name         String
+  email        String
+  phone        String?
+  documentType String?
+  message      String?  @db.Text
+  sourceDomain String   // dominio desde donde vino el widget
+  converted    Boolean  @default(false) // se convirtió en Order
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([translatorId])
+}
