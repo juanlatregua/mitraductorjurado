@@ -73,13 +73,13 @@ npm run db:rls                           # aplicar RLS tras primera migración
 - No abrir marketplace público sin gate: 50 subs + MRR ≥ 2.000€
 - No modificar `app/api/auth/` ni `prisma/migrations/` sin leer el CLAUDE.md local
 
-## Estado actual (34 páginas, 10 sprints)
+## Estado actual (36 páginas + sitemap + robots, 13 sprints)
 - S0 Scaffold ✅ · S1 Auth ✅ · S2 Perfil ✅ · S3 Directorio ✅ · S4 Pedidos ✅
 - S5 Editor+DeepL ✅ · S6 eIDAS ✅ · S7 Colegas ✅ · S8 Verifactu ✅
-- S9 Widget ✅ · S10 Stripe ✅
-- TODO: Plantillas documentos, email transaccional (Outlook SMTP), SEO/landing mejorada
+- S9 Widget ✅ · S10 Stripe ✅ · S11 Plantillas ✅ · S12 Email ✅ · S13 Landing+SEO ✅
+- Core funcional COMPLETO. Listo para configurar env vars y desplegar.
 
 ## Stack
 Next.js 14 App Router · TypeScript · Prisma · Neon (PostgreSQL + RLS)
 NextAuth JWT (translator|client|admin) · Tailwind CSS · Vercel
-Stripe Connect · DeepL · Signaturit/eIDAS · Verifactu · Vercel Blob · Resend
+Stripe Connect · DeepL · Signaturit/eIDAS · Verifactu · Vercel Blob · Nodemailer (Outlook SMTP)
