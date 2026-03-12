@@ -1,0 +1,5 @@
+﻿{
+  "Description": "Domain ownership verification file for Microsoft 365 - place in the website root",
+  "Domain": "mitraductorjurado.es",
+  "Id": "8e746a60-715c-4f4b-8679-44e23acd6f06"
+}
