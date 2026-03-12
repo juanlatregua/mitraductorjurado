@@ -9,6 +9,8 @@ import {
   calculateVAT,
   isVerifactuConfigured,
 } from "@/lib/verifactu";
+import { generateInvoicePdf } from "@/lib/invoice-pdf";
+import { put } from "@vercel/blob";
 
 interface Params {
   params: { orderId: string };
@@ -125,6 +127,38 @@ export async function POST(req: NextRequest, { params }: Params) {
     aeatResponse = result.response || result.error || null;
   }
 
+  // Generar PDF
+  const concept = `Traducción jurada — Pedido ${order.id.slice(0, 8)}`;
+  let pdfUrl: string | null = null;
+
+  try {
+    const pdfBuffer = await generateInvoicePdf({
+      invoiceNumber,
+      issueDate: new Date(),
+      issuerName: order.translator.name || "Traductor Jurado",
+      issuerNif: process.env.VERIFACTU_NIF || "PENDIENTE",
+      issuerMaec: order.translator.translatorProfile?.maecNumber || undefined,
+      recipientName: order.client.name || "Cliente",
+      recipientEmail: order.client.email,
+      concept,
+      amount: order.price,
+      vatRate,
+      vatAmount,
+      totalAmount,
+      sentToAeat,
+      aeatStatus: aeatResponse || undefined,
+    });
+
+    const blob = await put(
+      `invoices/${invoiceNumber}.pdf`,
+      pdfBuffer,
+      { access: "public", contentType: "application/pdf" }
+    );
+    pdfUrl = blob.url;
+  } catch (err) {
+    console.error("[Invoice PDF] Error generating PDF:", err);
+  }
+
   const invoice = await prisma.invoice.create({
     data: {
       orderId: params.orderId,
@@ -135,6 +169,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       vatAmount,
       totalAmount,
       xmlContent,
+      pdfUrl,
       status: sentToAeat ? "sent" : "pending",
       sentToAeat,
       aeatResponse,

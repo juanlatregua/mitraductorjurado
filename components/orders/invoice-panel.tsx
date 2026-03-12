@@ -126,16 +126,24 @@ export function InvoicePanel({ orderId, role, orderStatus }: InvoicePanelProps) 
             {invoice.sentToAeat && <span>· Enviada a AEAT</span>}
           </div>
 
-          {invoice.pdfUrl && (
+          <div className="flex items-center gap-2">
+            {invoice.pdfUrl && (
+              <a
+                href={invoice.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-navy-50 border border-navy-200 text-navy-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-navy-100 transition-colors"
+              >
+                Descargar PDF
+              </a>
+            )}
             <a
-              href={invoice.pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-navy-50 border border-navy-200 text-navy-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-navy-100 transition-colors"
+              href={`/api/invoices/${orderId}/xml`}
+              className="inline-flex items-center gap-2 border border-navy-200 text-navy-500 text-sm px-4 py-2 rounded-lg hover:bg-navy-50 transition-colors"
             >
-              Descargar factura (PDF)
+              XML Verifactu
             </a>
-          )}
+          </div>
         </div>
       ) : (
         role === "translator" && (
