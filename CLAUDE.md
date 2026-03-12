@@ -8,35 +8,43 @@ Precio: 49€/mes fundador. Break-even: 13 subs. Gate Fase 2: 50 subs + MRR ≥ 
 ## WHAT — Mapa del repo
 ```
 app/
-  page.tsx                          → Landing pública
-  layout.tsx                        → Root layout + SessionProvider
-  auth/login|register|onboarding    → Auth flow completo (magic link + Google)
-  auth/verify|error                 → Páginas auxiliares auth
-  dashboard/page.tsx                → Redirect por rol
-  dashboard/translator/             → Dashboard + profile editor + KPIs
-  dashboard/client/                 → Dashboard cliente + empty state
-  dashboard/admin/                  → Admin panel + verificaciones MAEC
-  translators/[id]/                 → Perfil público con SEO
-  api/auth/[...nextauth]            → NextAuth handler
-  api/auth/onboarding               → POST crear perfil (Zod validation)
-  api/admin/verify                  → POST toggle verificación MAEC
-  api/translator/profile            → GET/PUT perfil traductor
-  api/translator/photo              → POST upload foto (Vercel Blob)
-  api/translator/availability-status → PUT toggle disponibilidad
-  api/orders|payments|documents|... → TODO (placeholders .gitkeep)
+  page.tsx                              → Landing pública
+  layout.tsx                            → Root layout + SessionProvider
+  auth/login|register|onboarding|verify → Auth flow (magic link + Google)
+  dashboard/page.tsx                    → Redirect por rol
+  dashboard/translator/                 → Orders, editor, payments, invoices, widget, colleagues, profile
+  dashboard/client/                     → Orders, invoices, new-order
+  dashboard/admin/                      → Admin panel + verificaciones MAEC
+  translators/                          → Directorio público con filtros + perfil SEO
+  api/auth/                             → NextAuth handler + onboarding
+  api/orders/                           → CRUD pedidos + assign colega
+  api/stripe/                           → Connect onboarding + checkout
+  api/invoices/                         → GET/POST factura por pedido
+  api/signatures/                       → Firma eIDAS Signaturit
+  api/documents/                        → Editor bilingüe + DeepL
+  api/widget/                           → Widget leads + info pública
+  api/webhooks/stripe|signaturit        → Webhooks externos
 components/
-  providers.tsx                     → SessionProvider wrapper
-  dashboard/sidebar|kpi-card        → Layout components
-  dashboard/availability-toggle     → Toggle disponible/ocupado/vacaciones
+  orders/                               → OrderActions, StatusBadge, PaymentPanel, InvoicePanel, SignaturePanel, AssignColleague
+  editor/                               → BilingualEditor, SegmentRow
+  translators/                          → TranslatorCard, SearchFilters
+  dashboard/                            → Sidebar, KPICard, AvailabilityToggle
 lib/
-  auth.ts      → NextAuth config (email + Google, JWT + role + onboarded)
-  prisma.ts    → Prisma client singleton + RLS tenant middleware
-  session.ts   → getSession() / getCurrentUser() helpers
+  auth.ts        → NextAuth config (email + Google, JWT + role + onboarded)
+  prisma.ts      → Prisma client singleton + RLS tenant middleware
+  session.ts     → getSession() / getCurrentUser() helpers
+  stripe.ts      → Stripe Connect Express + PaymentIntent split
+  verifactu.ts   → XML Verifactu AEAT + IVA
+  signaturit.ts  → eIDAS firma electrónica
+  deepl.ts       → DeepL batch translation
+  order-status.ts → Status machine + role transitions
+  constants.ts   → LANG_NAMES, CATEGORIES, PROVINCES
+  invoice-number.ts → Numeración secuencial MTJ-YYYYMM-XXXX
 prisma/
-  schema.prisma → 16 modelos, TODOS con tenantId
-  rls-setup.sql → Row-Level Security para 13 tablas
-types/
-  index.ts     → Module augmentation NextAuth + interfaces dominio
+  schema.prisma  → 16 modelos, TODOS con tenantId
+  rls-setup.sql  → Row-Level Security para 13 tablas
+public/
+  widget.js      → Script embebible ES5 para webs externas
 ```
 
 ## HOW — Comandos
@@ -65,10 +73,11 @@ npm run db:rls                           # aplicar RLS tras primera migración
 - No abrir marketplace público sin gate: 50 subs + MRR ≥ 2.000€
 - No modificar `app/api/auth/` ni `prisma/migrations/` sin leer el CLAUDE.md local
 
-## Estado actual
-- S0 Cimientos: ✅  S1 Auth: ✅  S2 Perfil: ✅
-- Siguiente: S3 Directorio público + búsqueda/filtros
-- TODO: Orders, Payments, Editor, Templates, Stripe Connect, Signaturit, Verifactu
+## Estado actual (34 páginas, 10 sprints)
+- S0 Scaffold ✅ · S1 Auth ✅ · S2 Perfil ✅ · S3 Directorio ✅ · S4 Pedidos ✅
+- S5 Editor+DeepL ✅ · S6 eIDAS ✅ · S7 Colegas ✅ · S8 Verifactu ✅
+- S9 Widget ✅ · S10 Stripe ✅
+- TODO: Plantillas documentos, email transaccional (Outlook SMTP), SEO/landing mejorada
 
 ## Stack
 Next.js 14 App Router · TypeScript · Prisma · Neon (PostgreSQL + RLS)
