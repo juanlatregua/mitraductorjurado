@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { label: "Disponibilidad", href: "/dashboard/translator/availability", icon: "📅" },
   { label: "Colegas", href: "/dashboard/translator/colleagues", icon: "🤝" },
   { label: "Facturas", href: "/dashboard/translator/invoices", icon: "🧾" },
+  { label: "Widget", href: "/dashboard/translator/widget", icon: "🔗" },
   { label: "Perfil", href: "/dashboard/translator/profile", icon: "👤" },
 ];
 
