@@ -1,248 +1,76 @@
 # CLAUDE.md — mitraductorjurado.es
 
-> Leer este archivo completo antes de cualquier tarea de código.
-> Actualizar al inicio de cada sprint con lo aprendido.
+## WHY
+Marketplace que conecta ~6.132 traductores jurados MAEC con clientes directos.
+Elimina intermediarios (agencias) y el stack fragmentado (Adobe+DeepL+Word = 120-165€/mes).
+Precio: 49€/mes fundador. Break-even: 13 subs. Gate Fase 2: 50 subs + MRR ≥ 2.000€.
 
----
+## WHAT — Mapa del repo
+```
+app/
+  page.tsx                          → Landing pública
+  layout.tsx                        → Root layout + SessionProvider
+  auth/login|register|onboarding    → Auth flow completo (magic link + Google)
+  auth/verify|error                 → Páginas auxiliares auth
+  dashboard/page.tsx                → Redirect por rol
+  dashboard/translator/             → Dashboard + profile editor + KPIs
+  dashboard/client/                 → Dashboard cliente + empty state
+  dashboard/admin/                  → Admin panel + verificaciones MAEC
+  translators/[id]/                 → Perfil público con SEO
+  api/auth/[...nextauth]            → NextAuth handler
+  api/auth/onboarding               → POST crear perfil (Zod validation)
+  api/admin/verify                  → POST toggle verificación MAEC
+  api/translator/profile            → GET/PUT perfil traductor
+  api/translator/photo              → POST upload foto (Vercel Blob)
+  api/translator/availability-status → PUT toggle disponibilidad
+  api/orders|payments|documents|... → TODO (placeholders .gitkeep)
+components/
+  providers.tsx                     → SessionProvider wrapper
+  dashboard/sidebar|kpi-card        → Layout components
+  dashboard/availability-toggle     → Toggle disponible/ocupado/vacaciones
+lib/
+  auth.ts      → NextAuth config (email + Google, JWT + role + onboarded)
+  prisma.ts    → Prisma client singleton + RLS tenant middleware
+  session.ts   → getSession() / getCurrentUser() helpers
+prisma/
+  schema.prisma → 16 modelos, TODOS con tenantId
+  rls-setup.sql → Row-Level Security para 13 tablas
+types/
+  index.ts     → Module augmentation NextAuth + interfaces dominio
+```
 
-## Qué es este proyecto
+## HOW — Comandos
+```bash
+npm run dev                              # Next.js dev server
+npm run build                            # prisma generate && next build
+npx prisma migrate dev --name <nombre>   # crear migración
+npx prisma generate                      # regenerar client
+npx prisma studio                        # GUI para inspeccionar datos
+npm run db:rls                           # aplicar RLS tras primera migración
+```
 
-**mitraductorjurado.es** — Sistema operativo del traductor jurado en España.
+## Convenciones
+- API routes: validar con Zod, responder `{ error: "msg" }` + HTTP status
+- Server components: `getSession()` → `if (!session) redirect("/auth/login")`
+- Client components: marcar `"use client"`, usar `useSession()`
+- DB writes multi-modelo: siempre `prisma.$transaction()`
+- `useSearchParams()` requiere `<Suspense>` boundary
+- Colores: `navy-*` (institucional) + `accent-*` (cálido). Serif para headings.
+- Cada sprint = rama `sprint/SX-nombre` → merge a `dev` → merge a `main`
 
-Tres capas de valor:
-1. **Editor de traducción integrado** — reemplaza Adobe + DeepL + Word + plantilla + PDF + firma escaneada
-2. **Base de conocimiento colaborativa** — ~35 tipos de documento oficial con plantillas por idioma
-3. **Red de derivación profesional** — digitaliza el sistema informal de WhatsApp entre colegas
+## Reglas NO negociables
+- `tenantId` en TODOS los modelos Prisma — sin excepción
+- RLS activo en PostgreSQL — nunca desactivar, nunca añadir retroactivo
+- Cliente contrata con traductor principal — nunca con el colega asignado
+- No abrir marketplace público sin gate: 50 subs + MRR ≥ 2.000€
+- No modificar `app/api/auth/` ni `prisma/migrations/` sin leer el CLAUDE.md local
 
-**Fundador:** Juan Antonio, Traductor-Intérprete Jurado de Francés N.3850, HBTJ Consultores Lingüísticos S.L.
-
----
+## Estado actual
+- S0 Cimientos: ✅  S1 Auth: ✅  S2 Perfil: ✅
+- Siguiente: S3 Directorio público + búsqueda/filtros
+- TODO: Orders, Payments, Editor, Templates, Stripe Connect, Signaturit, Verifactu
 
 ## Stack
-
-```
-Next.js 14 + App Router + TypeScript
-PostgreSQL + Prisma
-Tailwind CSS
-NextAuth — JWT con campo role: 'translator' | 'client' | 'admin'
-Stripe Connect (Express)
-Verifactu (facturación electrónica España 2027)
-Signaturit / eIDAS (Orden AUC/213/2025)
-DeepL API (integrado en editor bilingüe)
-Adobe PDF Services API (OCR)
-Vercel Blob (almacenamiento documentos)
-Resend (email transaccional)
-Vercel (hosting)
-```
-
----
-
-## Reglas de arquitectura — NO negociables
-
-- `tenantId` en **todos** los modelos Prisma sin excepción
-- RLS activado en PostgreSQL desde Sprint 0 — nunca añadir después
-- Multi-tenancy desde día 1
-- El cliente **siempre** contrata con el traductor principal — nunca con el colega asignado
-- Reutilizar de traduccionesjuradas.net antes de escribir desde cero: upload API, rate limiting, tokens de orden, cron jobs
-- Nunca abrir marketplace público (Fase 2) antes del gate: 50 subs activos + MRR ≥ 2.000€
-
----
-
-## Roles
-
-| Rol | Acceso |
-|-----|--------|
-| `translator` | /dashboard/translator/*, editor, pedidos, red de colegas |
-| `client` | /dashboard/client/*, pedidos, pagos, descargas |
-| `admin` | /dashboard/admin/*, todo |
-
----
-
-## Estructura de directorios
-
-```
-/app
-  /api/
-    /auth/            → NextAuth
-    /orders/          → CRUD pedidos
-    /payments/        → Stripe Connect
-    /documents/       → OCR, DeepL, generación PDF
-    /templates/       → Base de plantillas documentos
-    /availability/    → Disponibilidad traductores
-    /assignments/     → Derivación entre colegas
-    /webhooks/        → Stripe, Signaturit, Verifactu
-  /dashboard/
-    /translator/      → Dashboard traductor
-    /client/          → Dashboard cliente
-    /admin/           → Panel admin
-  /translators/       → Directorio público (Fase 2)
-  /translators/[id]/  → Perfil público
-  /auth/              → Login, registro, onboarding
-  /precios/           → Pricing público
-  /traductores/       → Landing captación SEO
-/components/          → Componentes reutilizables
-/lib/                 → Utilities, helpers, config
-/types/               → TypeScript types
-/prisma/              → Schema y migraciones
-```
-
----
-
-## Modelos Prisma
-
-```prisma
-model User {
-  id        String   @id @default(cuid())
-  tenantId  String
-  email     String   @unique
-  role      Role     @default(client)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model TranslatorProfile {
-  id              String   @id @default(cuid())
-  tenantId        String
-  userId          String   @unique
-  maecNumber      String
-  verified        Boolean  @default(false)
-  avgRating       Float    @default(0)
-  stripeAccountId String?
-  availability    Availability[]
-  languagePairs   LanguagePair[]
-}
-
-// OrderStatus: pending → quoted → accepted → in_progress → delivered → closed | cancelled
-
-model Order {
-  id           String      @id @default(cuid())
-  tenantId     String
-  clientId     String
-  translatorId String
-  status       OrderStatus @default(pending)
-  expiresAt    DateTime?   // expiración del presupuesto
-  assignment   OrderAssignment?
-  payment      Payment?
-  invoice      Invoice?
-}
-
-model OrderAssignment {
-  id           String @id @default(cuid())
-  orderId      String @unique
-  assignedToId String // colega que ejecuta
-  brokerMargin Float  // comisión de quien deriva
-  agreedPrice  Float  // precio acordado con colega
-}
-
-model DocumentTemplate {
-  id          String @id @default(cuid())
-  category    String // académico|notarial|administrativo|económico|jurídico
-  type        String // titulo-universitario|acta-nacimiento|etc
-  language    String // fr|de|en|it|es
-  structure   Json   // campos fijos + variables
-  exampleAnon String?
-}
-
-model Availability {
-  id           String   @id @default(cuid())
-  translatorId String
-  weekStart    DateTime
-  slots        Json     // franjas horarias
-}
-```
-
----
-
-## Flujo de pedido con derivación
-
-```
-Cliente solicita → Order.status = pending
-Traductor da presupuesto + expiresAt → quoted
-  └─ Si necesita colega:
-       Consulta disponibilidad → OrderAssignment creado
-Cliente acepta → accepted → in_progress
-Colega trabaja en editor bilingüe
-Traductor principal revisa → delivered
-Stripe Connect divide pago automáticamente
-Verifactu genera ambas facturas
-Cliente valora → closed
-```
-
----
-
-## Variables de entorno
-
-```env
-DATABASE_URL=
-NEXTAUTH_URL=
-NEXTAUTH_SECRET=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PLATFORM_FEE_PERCENT=
-DEEPL_API_KEY=
-ADOBE_PDF_CLIENT_ID=
-ADOBE_PDF_CLIENT_SECRET=
-SIGNATURIT_API_KEY=
-SIGNATURIT_SANDBOX=true
-RESEND_API_KEY=
-BLOB_READ_WRITE_TOKEN=
-VERIFACTU_SANDBOX=true
-VERIFACTU_NIF=
-```
-
----
-
-## Sprint actual
-
-**S0 — Cimientos** (completado)
-- [x] S0-01: Repo GitHub + ramas main/dev/sprint
-- [x] S0-02: PostgreSQL con RLS (rls-setup.sql + middleware Prisma)
-- [x] S0-03: Schema Prisma completo — 16 modelos, todos con tenantId
-- [x] S0-04: NextAuth — email (Resend) + Google OAuth, JWT con role
-- [x] S0-05: Middleware protección de rutas por rol
-- [x] S0-06: Variables de entorno (.env.example completo)
-- [x] S0-07: CLAUDE.md master document
-- [x] S0-08: Build verificado, listo para Vercel
-
-**S1 — Auth completo** (completado)
-- [x] S1-01: Login (email magic link + Google) y registro con selección de rol
-- [x] S1-02: Onboarding traductor (MAEC, idiomas, especialidades, provincia)
-- [x] S1-03: Onboarding cliente (nombre, empresa)
-- [x] S1-04: Verificación email + página de error
-- [x] S1-05: Dashboard traductor con KPIs
-- [x] S1-06: Dashboard cliente
-- [x] S1-07: Panel admin con lista de usuarios
-- [x] S1-08: Middleware redirige a onboarding si perfil incompleto
-
-**S2 — Perfil traductor** (completado)
-- [x] S2-01 a S2-04: CRUD perfil completo (foto, idiomas, especialidades, tarifas)
-- [x] S2-05: Perfil público /translators/[id] con SEO
-- [x] S2-06: Verificación MAEC desde admin
-- [x] S2-07: Toggle disponibilidad (available/busy/vacation)
-
-**Siguiente: S3 — Directorio público + búsqueda/filtros**
-
----
-
-## Comandos frecuentes
-
-```bash
-npm run dev
-npx prisma migrate dev --name [nombre]
-npx prisma generate
-npx prisma studio
-npm run build
-vercel --prod
-```
-
----
-
-## Contexto de negocio
-
-- ~6.132 traductores jurados MAEC en España
-- Stack actual del traductor: Adobe + DeepL + Word + Trados + facturación = 120-165€/mes
-- Precio plataforma: 49€/mes (precio fundador)
-- Break-even: 13 suscriptores
-- Early adopters: grupo de 99 traductores colegas organizados
-- Orden AUC/213/2025: firma electrónica válida para traducciones juradas (oportunidad)
-- Verifactu 2027: facturación electrónica obligatoria (urgencia)
+Next.js 14 App Router · TypeScript · Prisma · Neon (PostgreSQL + RLS)
+NextAuth JWT (translator|client|admin) · Tailwind CSS · Vercel
+Stripe Connect · DeepL · Signaturit/eIDAS · Verifactu · Vercel Blob · Resend
