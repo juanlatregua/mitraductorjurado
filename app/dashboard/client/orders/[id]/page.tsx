@@ -6,6 +6,7 @@ import { LANG_NAMES } from "@/lib/constants";
 import { OrderActions } from "@/components/orders/order-actions";
 import { SignaturePanel } from "@/components/orders/signature-panel";
 import { InvoicePanel } from "@/components/orders/invoice-panel";
+import { PaymentPanel } from "@/components/orders/payment-panel";
 import type { OrderStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -122,6 +123,16 @@ export default async function ClientOrderDetailPage({ params }: Props) {
             </dd>
           </div>
         )}
+      </div>
+
+      {/* Pago */}
+      <div className="mb-6">
+        <PaymentPanel
+          orderId={order.id}
+          role="client"
+          orderStatus={order.status}
+          price={order.price}
+        />
       </div>
 
       {/* Firma electrónica */}

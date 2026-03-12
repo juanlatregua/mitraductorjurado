@@ -7,6 +7,7 @@ import { STATUS_LABELS } from "@/lib/order-status";
 import { OrderActions } from "@/components/orders/order-actions";
 import { SignaturePanel } from "@/components/orders/signature-panel";
 import { InvoicePanel } from "@/components/orders/invoice-panel";
+import { PaymentPanel } from "@/components/orders/payment-panel";
 import { AssignColleague } from "@/components/orders/assign-colleague";
 import type { OrderStatus } from "@prisma/client";
 
@@ -176,6 +177,16 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
           </a>
         </div>
       )}
+
+      {/* Pago */}
+      <div className="mb-6">
+        <PaymentPanel
+          orderId={order.id}
+          role="translator"
+          orderStatus={order.status}
+          price={order.price}
+        />
+      </div>
 
       {/* Firma electrónica */}
       <div className="mb-6">
