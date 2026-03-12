@@ -17,7 +17,7 @@ export default function Home() {
             Acceder
           </a>
           <a
-            href="/traductores"
+            href="/translators"
             className="border border-navy-400 hover:border-accent-400 text-navy-200 hover:text-white font-semibold px-6 py-3 rounded-lg transition-colors"
           >
             Soy traductor jurado

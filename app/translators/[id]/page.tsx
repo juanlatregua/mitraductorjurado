@@ -1,18 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-
-const LANG_NAMES: Record<string, string> = {
-  fr: "Francés", en: "Inglés", de: "Alemán", it: "Italiano", pt: "Portugués",
-  ar: "Árabe", zh: "Chino", ja: "Japonés", ru: "Ruso", ro: "Rumano",
-  pl: "Polaco", nl: "Neerlandés", ca: "Catalán", eu: "Euskera", gl: "Gallego",
-  es: "Español",
-};
-
-const CATEGORY_NAMES: Record<string, string> = {
-  academico: "Académico", notarial: "Notarial", administrativo: "Administrativo",
-  economico: "Económico", juridico: "Jurídico",
-};
+import { LANG_NAMES, CATEGORY_NAMES } from "@/lib/constants";
 
 interface Props {
   params: { id: string };
