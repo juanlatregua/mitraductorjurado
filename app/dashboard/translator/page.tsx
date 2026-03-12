@@ -10,10 +10,18 @@ export default async function TranslatorDashboard() {
   const session = await getSession();
   if (!session) redirect("/auth/login");
 
-  const profile = await prisma.translatorProfile.findUnique({
-    where: { userId: session.user.id },
-    select: { availabilityStatus: true, verified: true, id: true },
-  });
+  const [profile, pendingCount, activeCount] = await Promise.all([
+    prisma.translatorProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { availabilityStatus: true, verified: true, id: true },
+    }),
+    prisma.order.count({
+      where: { translatorId: session.user.id, status: "pending" },
+    }),
+    prisma.order.count({
+      where: { translatorId: session.user.id, status: { in: ["quoted", "accepted", "in_progress"] } },
+    }),
+  ]);
 
   return (
     <div>
@@ -39,13 +47,13 @@ export default async function TranslatorDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <KPICard
           title="Pedidos nuevos"
-          value={0}
+          value={pendingCount}
           subtitle="Pendientes de presupuesto"
           icon="📥"
         />
         <KPICard
           title="En curso"
-          value={0}
+          value={activeCount}
           subtitle="Pendientes de entrega"
           icon="⏳"
         />
