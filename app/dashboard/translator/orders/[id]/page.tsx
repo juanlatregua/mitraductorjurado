@@ -6,6 +6,7 @@ import { LANG_NAMES } from "@/lib/constants";
 import { STATUS_LABELS } from "@/lib/order-status";
 import { OrderActions } from "@/components/orders/order-actions";
 import { SignaturePanel } from "@/components/orders/signature-panel";
+import { AssignColleague } from "@/components/orders/assign-colleague";
 import type { OrderStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,11 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
     where: { id: params.id },
     include: {
       client: { select: { name: true, email: true } },
+      assignment: {
+        include: {
+          assignedTo: { select: { name: true, email: true } },
+        },
+      },
     },
   });
 
@@ -111,6 +117,48 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {/* Derivación a colega */}
+      {order.assignment ? (
+        <div className="bg-indigo-50 rounded-xl border border-indigo-200 p-6 mb-6">
+          <h2 className="font-bold text-navy-900 mb-3">Colega asignado</h2>
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-navy-500">Nombre</dt>
+              <dd className="font-medium text-navy-900">
+                {order.assignment.assignedTo.name || order.assignment.assignedTo.email}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-navy-500">Precio acordado</dt>
+              <dd className="font-medium text-navy-900">{order.assignment.agreedPrice.toFixed(2)} €</dd>
+            </div>
+            <div>
+              <dt className="text-navy-500">Tu margen</dt>
+              <dd className="font-medium text-green-600">{order.assignment.brokerMargin.toFixed(2)} €</dd>
+            </div>
+            {order.assignment.acceptedAt && (
+              <div>
+                <dt className="text-navy-500">Aceptado</dt>
+                <dd className="font-medium text-navy-900">
+                  {new Date(order.assignment.acceptedAt).toLocaleDateString("es-ES")}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      ) : (
+        ["pending", "quoted", "accepted"].includes(order.status) && (
+          <div className="mb-6">
+            <AssignColleague
+              orderId={order.id}
+              sourceLang={order.sourceLang}
+              targetLang={order.targetLang}
+              orderPrice={order.price}
+            />
+          </div>
+        )
+      )}
 
       {/* Enlace al editor */}
       {(order.status === "accepted" || order.status === "in_progress") && (
