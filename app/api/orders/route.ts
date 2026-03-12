@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { sendNewOrderNotification } from "@/lib/email";
 
 const createOrderSchema = z.object({
   translatorId: z.string().min(1),
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
   // Verificar que el traductor existe
   const translator = await prisma.user.findFirst({
     where: { id: data.translatorId, role: "translator" },
-    select: { id: true },
+    select: { id: true, name: true, email: true },
   });
   if (!translator) {
     return NextResponse.json({ error: "Traductor no encontrado" }, { status: 404 });
@@ -53,6 +54,14 @@ export async function POST(req: NextRequest) {
       status: "pending",
     },
   });
+
+  // Notificar al traductor
+  sendNewOrderNotification(
+    translator.email!,
+    translator.name || "Traductor",
+    order.id,
+    session.user.name || session.user.email || "Cliente"
+  );
 
   return NextResponse.json({ ok: true, orderId: order.id }, { status: 201 });
 }

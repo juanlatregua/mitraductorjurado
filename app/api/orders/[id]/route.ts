@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { canTransition } from "@/lib/order-status";
 import { z } from "zod";
 import type { OrderStatus } from "@prisma/client";
+import {
+  sendQuoteNotification,
+  sendOrderAcceptedNotification,
+  sendDeliveryNotification,
+} from "@/lib/email";
 
 interface Params {
   params: { id: string };
@@ -72,6 +77,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const order = await prisma.order.findUnique({
     where: { id: params.id },
+    include: {
+      client: { select: { name: true, email: true } },
+      translator: { select: { name: true, email: true } },
+    },
   });
 
   if (!order) {
@@ -125,6 +134,31 @@ export async function PUT(req: NextRequest, { params }: Params) {
     where: { id: params.id },
     data: updateData,
   });
+
+  // Enviar notificaciones por email según la transición
+  if (data.status === "quoted" && updateData.price) {
+    sendQuoteNotification(
+      order.client.email!,
+      order.client.name || "Cliente",
+      order.id,
+      order.translator.name || "Traductor",
+      updateData.price
+    );
+  } else if (data.status === "accepted") {
+    sendOrderAcceptedNotification(
+      order.translator.email!,
+      order.translator.name || "Traductor",
+      order.id,
+      order.client.name || "Cliente"
+    );
+  } else if (data.status === "delivered") {
+    sendDeliveryNotification(
+      order.client.email!,
+      order.client.name || "Cliente",
+      order.id,
+      order.translator.name || "Traductor"
+    );
+  }
 
   return NextResponse.json(updated);
 }

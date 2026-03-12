@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { sendWidgetLeadNotification } from "@/lib/email";
 
 interface Params {
   params: { translatorId: string };
@@ -77,7 +78,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Verificar que el traductor existe
   const profile = await prisma.translatorProfile.findUnique({
     where: { userId: params.translatorId },
-    select: { userId: true },
+    select: {
+      userId: true,
+      user: { select: { name: true, email: true } },
+    },
   });
 
   if (!profile) {
@@ -95,6 +99,15 @@ export async function POST(req: NextRequest, { params }: Params) {
       sourceDomain,
     },
   });
+
+  // Notificar al traductor
+  sendWidgetLeadNotification(
+    profile.user.email!,
+    profile.user.name || "Traductor",
+    result.data.name,
+    result.data.email,
+    sourceDomain
+  );
 
   return corsResponse({ ok: true, leadId: lead.id }, 201);
 }

@@ -13,14 +13,14 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       server: {
-        host: "smtp.resend.com",
-        port: 465,
+        host: process.env.SMTP_HOST || "smtp.office365.com",
+        port: parseInt(process.env.SMTP_PORT || "587", 10),
         auth: {
-          user: "resend",
-          pass: process.env.RESEND_API_KEY,
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
         },
       },
-      from: process.env.RESEND_FROM_EMAIL || "noreply@mitraductorjurado.es",
+      from: process.env.SMTP_FROM || "noreply@mitraductorjurado.es",
     }),
     ...(process.env.GOOGLE_CLIENT_ID
       ? [
