@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/orders/status-badge";
 import { LANG_NAMES } from "@/lib/constants";
 import { STATUS_LABELS } from "@/lib/order-status";
 import { OrderActions } from "@/components/orders/order-actions";
+import { SignaturePanel } from "@/components/orders/signature-panel";
 import type { OrderStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -126,6 +127,15 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
           </a>
         </div>
       )}
+
+      {/* Firma electrónica */}
+      <div className="mb-6">
+        <SignaturePanel
+          orderId={order.id}
+          role="translator"
+          orderStatus={order.status}
+        />
+      </div>
 
       {/* Acciones */}
       <OrderActions

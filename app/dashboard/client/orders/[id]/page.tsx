@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { StatusBadge } from "@/components/orders/status-badge";
 import { LANG_NAMES } from "@/lib/constants";
 import { OrderActions } from "@/components/orders/order-actions";
+import { SignaturePanel } from "@/components/orders/signature-panel";
 import type { OrderStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -120,6 +121,15 @@ export default async function ClientOrderDetailPage({ params }: Props) {
             </dd>
           </div>
         )}
+      </div>
+
+      {/* Firma electrónica */}
+      <div className="mb-6">
+        <SignaturePanel
+          orderId={order.id}
+          role="client"
+          orderStatus={order.status}
+        />
       </div>
 
       {/* Acciones */}
