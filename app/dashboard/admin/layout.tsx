@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { label: "Verificaciones", href: "/dashboard/admin/verifications", icon: "✅" },
   { label: "Pedidos", href: "/dashboard/admin/orders", icon: "📋" },
   { label: "Ingresos", href: "/dashboard/admin/revenue", icon: "💰" },
+  { label: "Plantillas", href: "/dashboard/admin/templates", icon: "📄" },
   { label: "Verifactu", href: "/dashboard/admin/verifactu", icon: "🧾" },
 ];
 

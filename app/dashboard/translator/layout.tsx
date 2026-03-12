@@ -4,6 +4,7 @@ const NAV_ITEMS = [
   { label: "Inicio", href: "/dashboard/translator", icon: "📊" },
   { label: "Pedidos", href: "/dashboard/translator/orders", icon: "📋" },
   { label: "Editor", href: "/dashboard/translator/editor", icon: "✍️" },
+  { label: "Plantillas", href: "/dashboard/translator/templates", icon: "📄" },
   { label: "Disponibilidad", href: "/dashboard/translator/availability", icon: "📅" },
   { label: "Colegas", href: "/dashboard/translator/colleagues", icon: "🤝" },
   { label: "Pagos", href: "/dashboard/translator/payments", icon: "💳" },
