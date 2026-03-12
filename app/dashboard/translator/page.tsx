@@ -1,20 +1,39 @@
 import { getSession } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import { KPICard } from "@/components/dashboard/kpi-card";
+import { AvailabilityToggle } from "@/components/dashboard/availability-toggle";
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 export default async function TranslatorDashboard() {
   const session = await getSession();
   if (!session) redirect("/auth/login");
 
+  const profile = await prisma.translatorProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { availabilityStatus: true, verified: true, id: true },
+  });
+
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-navy-900">
-          Hola, {session.user.name || "traductor"}
-        </h1>
-        <p className="text-navy-500 mt-1">
-          Resumen de tu actividad
-        </p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-navy-900">
+            Hola, {session.user.name || "traductor"}
+          </h1>
+          <p className="text-navy-500 mt-1">
+            Resumen de tu actividad
+            {profile?.verified && (
+              <span className="ml-2 text-green-600 text-xs font-medium">
+                MAEC Verificado
+              </span>
+            )}
+          </p>
+        </div>
+        {profile && (
+          <AvailabilityToggle initialStatus={profile.availabilityStatus} />
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

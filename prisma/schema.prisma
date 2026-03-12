@@ -51,6 +51,12 @@ enum InvoiceStatus {
   rejected
 }
 
+enum AvailabilityStatus {
+  available
+  busy
+  vacation
+}
+
 // ─── USUARIOS ─────────────────────────────────────────────────────────────────
 
 model User {
@@ -133,6 +139,7 @@ model TranslatorProfile {
   reviewCount     Int      @default(0)
   stripeAccountId String?  // Stripe Connect Express
   stripeOnboarded Boolean  @default(false)
+  availabilityStatus AvailabilityStatus @default(available)
   widgetDomain    String?  // dominio autorizado para el widget
   widgetConfig    Json?    // colores, campos visibles, etc.
   createdAt       DateTime @default(now())
