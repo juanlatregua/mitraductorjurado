@@ -204,7 +204,23 @@ VERIFACTU_NIF=
 - [x] S0-07: CLAUDE.md master document
 - [x] S0-08: Build verificado, listo para Vercel
 
-**Siguiente: S1 — Auth completo + dashboards básicos**
+**S1 — Auth completo** (completado)
+- [x] S1-01: Login (email magic link + Google) y registro con selección de rol
+- [x] S1-02: Onboarding traductor (MAEC, idiomas, especialidades, provincia)
+- [x] S1-03: Onboarding cliente (nombre, empresa)
+- [x] S1-04: Verificación email + página de error
+- [x] S1-05: Dashboard traductor con KPIs
+- [x] S1-06: Dashboard cliente
+- [x] S1-07: Panel admin con lista de usuarios
+- [x] S1-08: Middleware redirige a onboarding si perfil incompleto
+
+**S2 — Perfil traductor** (completado)
+- [x] S2-01 a S2-04: CRUD perfil completo (foto, idiomas, especialidades, tarifas)
+- [x] S2-05: Perfil público /translators/[id] con SEO
+- [x] S2-06: Verificación MAEC desde admin
+- [x] S2-07: Toggle disponibilidad (available/busy/vacation)
+
+**Siguiente: S3 — Directorio público + búsqueda/filtros**
 
 ---
 
