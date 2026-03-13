@@ -1,20 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  // Stats reales para social proof
-  let translatorCount = 0;
-  let orderCount = 0;
-  try {
-    [translatorCount, orderCount] = await Promise.all([
-      prisma.translatorProfile.count({ where: { verified: true } }),
-      prisma.order.count({ where: { status: { in: ["delivered", "closed"] } } }),
-    ]);
-  } catch {
-    // DB not available — show landing without stats
-  }
+export default function Home() {
 
   return (
     <main className="bg-white">
@@ -70,24 +56,22 @@ export default async function Home() {
       </section>
 
       {/* Stats */}
-      {(translatorCount > 0 || orderCount > 0) && (
-        <section className="py-12 bg-navy-50">
-          <div className="max-w-4xl mx-auto px-6 grid grid-cols-3 gap-8 text-center">
-            <div>
-              <p className="text-3xl font-bold text-navy-900">{translatorCount}</p>
-              <p className="text-sm text-navy-500 mt-1">Traductores verificados MAEC</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-navy-900">{orderCount}</p>
-              <p className="text-sm text-navy-500 mt-1">Traducciones completadas</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-navy-900">49€</p>
-              <p className="text-sm text-navy-500 mt-1">Plan fundador / mes</p>
-            </div>
+      <section className="py-12 bg-navy-50">
+        <div className="max-w-4xl mx-auto px-6 grid grid-cols-3 gap-8 text-center">
+          <div>
+            <p className="text-3xl font-bold text-navy-900">6.132</p>
+            <p className="text-sm text-navy-500 mt-1">Traductores jurados MAEC</p>
           </div>
-        </section>
-      )}
+          <div>
+            <p className="text-3xl font-bold text-navy-900">35+</p>
+            <p className="text-sm text-navy-500 mt-1">Tipos de documento</p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-navy-900">49€</p>
+            <p className="text-sm text-navy-500 mt-1">Plan fundador / mes</p>
+          </div>
+        </div>
+      </section>
 
       {/* Features */}
       <section className="py-20 px-6">
