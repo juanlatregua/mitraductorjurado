@@ -1,22 +1,9 @@
-import nodemailer from "nodemailer";
+import { sendMail, isAzureMailConfigured } from "@/lib/azure-mail";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.office365.com",
-  port: parseInt(process.env.SMTP_PORT || "587", 10),
-  secure: false, // STARTTLS
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-const FROM = process.env.SMTP_FROM || "noreply@mitraductorjurado.es";
 const APP_NAME = "Mi Traductor Jurado";
 const BASE_URL = process.env.NEXTAUTH_URL || "https://mitraductorjurado.es";
 
-export function isEmailConfigured(): boolean {
-  return !!process.env.SMTP_USER && !!process.env.SMTP_PASS;
-}
+export { isAzureMailConfigured as isEmailConfigured };
 
 function wrapHtml(title: string, body: string): string {
   return `<!DOCTYPE html>
@@ -44,12 +31,8 @@ function btn(text: string, url: string): string {
 }
 
 async function send(to: string, subject: string, html: string) {
-  if (!isEmailConfigured()) {
-    console.log(`[Email] No configurado. Asunto: ${subject} → ${to}`);
-    return;
-  }
   try {
-    await transporter.sendMail({ from: FROM, to, subject, html });
+    await sendMail({ to, subject, html });
   } catch (err) {
     console.error("[Email] Error enviando:", err);
   }
