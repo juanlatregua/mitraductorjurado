@@ -5,10 +5,16 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   // Stats reales para social proof
-  const [translatorCount, orderCount] = await Promise.all([
-    prisma.translatorProfile.count({ where: { verified: true } }),
-    prisma.order.count({ where: { status: { in: ["delivered", "closed"] } } }),
-  ]);
+  let translatorCount = 0;
+  let orderCount = 0;
+  try {
+    [translatorCount, orderCount] = await Promise.all([
+      prisma.translatorProfile.count({ where: { verified: true } }),
+      prisma.order.count({ where: { status: { in: ["delivered", "closed"] } } }),
+    ]);
+  } catch {
+    // DB not available — show landing without stats
+  }
 
   return (
     <main className="bg-white">

@@ -16,11 +16,14 @@ function createPrismaClient(): PrismaClient {
 
   // Middleware: setear app.tenant_id en cada query para RLS
   client.$use(async (params, next) => {
-    // Obtener tenantId del contexto o usar el default
     const tenantId = DEFAULT_TENANT_ID;
-    await client.$executeRawUnsafe(
-      `SELECT set_config('app.tenant_id', '${tenantId}', true)`
-    );
+    try {
+      await client.$executeRawUnsafe(
+        `SELECT set_config('app.tenant_id', '${tenantId}', true)`
+      );
+    } catch {
+      // RLS not configured yet — skip silently
+    }
     return next(params);
   });
 
