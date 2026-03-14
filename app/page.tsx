@@ -1,20 +1,25 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { prisma } from "@/lib/prisma";
+import { Navbar } from "@/components/landing/navbar";
+import { HeroTextReveal } from "@/components/landing/hero-text-reveal";
+import { ScrollReveal } from "@/components/landing/scroll-reveal";
+import { AnimatedCounter } from "@/components/landing/animated-counter";
+import { ProductShowcase } from "@/components/landing/product-showcase";
 
 export const dynamic = "force-dynamic";
 
 /* ─── Helpers ─── */
 
 const LANG_CODE: Record<string, string> = {
-  FRANCÉS: "FR", INGLÉS: "EN", ALEMÁN: "DE", ITALIANO: "IT",
-  PORTUGUÉS: "PT", ÁRABE: "AR", CHINO: "ZH", JAPONÉS: "JA",
-  RUSO: "RU", RUMANO: "RO", POLACO: "PL", NEERLANDÉS: "NL",
-  CATALÁN: "CA", GALLEGO: "GL", EUSKERA: "EU", SUECO: "SV",
-  TURCO: "TR", DANÉS: "DA", NORUEGO: "NO", GRIEGO: "EL",
-  HEBREO: "HE", HÚNGARO: "HU", CHECO: "CS", BÚLGARO: "BG",
-  CROATA: "HR", SERBIO: "SR", FINÉS: "FI", ESTONIO: "ET",
-  LETÓN: "LV", LITUANO: "LT", UCRANIANO: "UK", PERSA: "FA",
+  "FRANC\u00c9S": "FR", "INGL\u00c9S": "EN", "ALEM\u00c1N": "DE", "ITALIANO": "IT",
+  "PORTUGU\u00c9S": "PT", "\u00c1RABE": "AR", "CHINO": "ZH", "JAPON\u00c9S": "JA",
+  "RUSO": "RU", "RUMANO": "RO", "POLACO": "PL", "NEERLAND\u00c9S": "NL",
+  "CATAL\u00c1N": "CA", "GALLEGO": "GL", "EUSKERA": "EU", "SUECO": "SV",
+  "TURCO": "TR", "DAN\u00c9S": "DA", "NORUEGO": "NO", "GRIEGO": "EL",
+  "HEBREO": "HE", "H\u00daNGARO": "HU", "CHECO": "CS", "B\u00daLGARO": "BG",
+  "CROATA": "HR", "SERBIO": "SR", "FIN\u00c9S": "FI", "ESTONIO": "ET",
+  "LET\u00d3N": "LV", "LITUANO": "LT", "UCRANIANO": "UK", "PERSA": "FA",
 };
 
 function capitalize(s: string): string {
@@ -31,49 +36,19 @@ function formatRegistryName(nombre: string): string {
   return nombre.split(" ").map(capitalize).join(" ");
 }
 
-type HeroEntry = { name: string; spec: string; badge: string };
 type ClientEntry = { name: string; spec: string; langs: string; badge: string };
 
-const FALLBACK_HERO: HeroEntry[] = [
-  { name: "Traductor verificado", spec: "Francés", badge: "MAEC ····" },
-  { name: "Traductor verificado", spec: "Francés", badge: "MAEC ····" },
-  { name: "Traductor verificado", spec: "Francés", badge: "MAEC ····" },
-];
-
 const FALLBACK_CLIENT: ClientEntry[] = [
-  { name: "Traductor verificado", spec: "Madrid", langs: "FR → ES", badge: "MAEC ····" },
-  { name: "Traductor verificado", spec: "Barcelona", langs: "EN → ES", badge: "MAEC ····" },
-  { name: "Traductor verificado", spec: "Sevilla", langs: "FR → ES", badge: "MAEC ····" },
-  { name: "Traductor verificado", spec: "Valencia", langs: "DE → ES", badge: "MAEC ····" },
+  { name: "Traductor verificado", spec: "Madrid", langs: "FR \u2192 ES", badge: "MAEC \u00b7\u00b7\u00b7\u00b7" },
+  { name: "Traductor verificado", spec: "Barcelona", langs: "EN \u2192 ES", badge: "MAEC \u00b7\u00b7\u00b7\u00b7" },
+  { name: "Traductor verificado", spec: "Sevilla", langs: "FR \u2192 ES", badge: "MAEC \u00b7\u00b7\u00b7\u00b7" },
+  { name: "Traductor verificado", spec: "Valencia", langs: "DE \u2192 ES", badge: "MAEC \u00b7\u00b7\u00b7\u00b7" },
 ];
 
 export default async function Home() {
-  let heroTranslators: HeroEntry[] = FALLBACK_HERO;
   let clientTranslators: ClientEntry[] = FALLBACK_CLIENT;
 
   try {
-    // 3 French translators in Málaga for the hero mockup
-    const heroRaw = await prisma.mAECRegistry.findMany({
-      where: { idiomas: { has: "FRANCÉS" }, provincia: "MÁLAGA", activo: true },
-      take: 3,
-    });
-
-    if (heroRaw.length >= 3) {
-      const heroTijs = heroRaw.map((t) => `N.${t.tij}`);
-      const claimedHero = new Set(
-        (await prisma.translatorProfile.findMany({
-          where: { maecNumber: { in: heroTijs } },
-          select: { maecNumber: true },
-        })).map((p) => p.maecNumber),
-      );
-      heroTranslators = heroRaw.map((t) => ({
-        name: formatRegistryName(t.nombre),
-        spec: t.idiomas.map(capitalize).join(" · "),
-        badge: claimedHero.has(`N.${t.tij}`) ? `MAEC N.${t.tij}` : "MAEC ····",
-      }));
-    }
-
-    // 4 translators from different provinces for "Para clientes"
     const targetProvinces = ["MADRID", "BARCELONA", "SEVILLA", "VALENCIA"];
     const clientRaw = await Promise.all(
       targetProvinces.map((prov) =>
@@ -93,8 +68,8 @@ export default async function Home() {
       clientTranslators = validClients.map((t) => ({
         name: formatRegistryName(t.nombre),
         spec: capitalize(t.provincia),
-        langs: `${LANG_CODE[t.idiomas[0]] || t.idiomas[0].slice(0, 2)} → ES`,
-        badge: claimedClient.has(`N.${t.tij}`) ? `MAEC N.${t.tij}` : "MAEC ····",
+        langs: `${LANG_CODE[t.idiomas[0]] || t.idiomas[0].slice(0, 2)} \u2192 ES`,
+        badge: claimedClient.has(`N.${t.tij}`) ? `MAEC N.${t.tij}` : "MAEC \u00b7\u00b7\u00b7\u00b7",
       }));
     }
   } catch {
@@ -102,468 +77,659 @@ export default async function Home() {
   }
 
   return (
-    <main>
-      {/* ─── Navbar ─── */}
-      <nav
-        className="fixed top-0 w-full z-50"
-        style={{
-          backgroundColor: "var(--color-primary)",
-          borderBottom: "0.5px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-6 h-[52px] flex items-center justify-between">
-          <Link href="/">
-            <Logo size="sm" variant="dark" />
-          </Link>
-          <Link
-            href="/auth/login"
-            className="font-sans text-sm font-medium px-5 py-2 rounded transition-colors"
-            style={{ backgroundColor: "var(--color-accent)", color: "#fff" }}
-          >
-            Acceder
-          </Link>
-        </div>
-      </nav>
+    <main className="overflow-x-hidden">
+      {/* ─── S1: Navbar ─── */}
+      <Navbar />
 
-      {/* ─── Split Hero ─── */}
-      <section className="flex flex-col lg:flex-row" style={{ minHeight: "calc(100vh - 52px)", marginTop: 52 }}>
-        {/* Columna Traductor */}
-        <div
-          className="relative flex-1 flex flex-col justify-center px-8 md:px-16 py-16 lg:py-0 overflow-hidden"
-          style={{ backgroundColor: "var(--color-primary)" }}
-        >
-          {/* Background decoration — Logo SVG watermark */}
-          <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 select-none pointer-events-none"
-            style={{ opacity: 0.06 }}
-            aria-hidden="true"
+      {/* ─── S2: Hero ─── */}
+      <section
+        className="relative min-h-screen flex items-center justify-center gradient-mesh-dark dot-grid overflow-hidden"
+      >
+        {/* Floating glass cards */}
+        <div className="absolute top-[15%] left-[8%] animate-float hidden lg:block" aria-hidden="true">
+          <div className="glass rounded-xl p-4 w-48">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#6ABB7A" }} />
+              <span className="font-mono text-[8px]" style={{ color: "rgba(255,255,255,0.6)" }}>Editor bilingüe</span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex gap-1">
+                <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: "rgba(106,187,122,0.3)" }} />
+                <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: "rgba(200,237,212,0.2)" }} />
+              </div>
+              <div className="flex gap-1">
+                <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: "rgba(106,187,122,0.3)" }} />
+                <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: "rgba(200,237,212,0.2)" }} />
+              </div>
+              <div className="flex gap-1">
+                <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: "rgba(106,187,122,0.3)" }} />
+                <div className="flex-1 h-1.5 rounded-full" style={{ backgroundColor: "rgba(200,237,212,0.15)" }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute bottom-[20%] right-[6%] animate-float-delayed hidden lg:block" aria-hidden="true">
+          <div className="glass rounded-xl p-4 w-44">
+            <div className="flex items-center gap-2 mb-2">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="#C9882A" strokeWidth="1.2" />
+                <circle cx="7" cy="7" r="2" fill="#C9882A" />
+              </svg>
+              <span className="font-mono text-[8px]" style={{ color: "rgba(255,255,255,0.6)" }}>Sello MAEC</span>
+            </div>
+            <div className="space-y-1">
+              <div className="h-1.5 rounded-full w-3/4" style={{ backgroundColor: "rgba(201,136,42,0.3)" }} />
+              <div className="h-1.5 rounded-full w-1/2" style={{ backgroundColor: "rgba(201,136,42,0.2)" }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Hero content */}
+        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto pt-24 pb-32">
+          <p
+            className="font-mono text-[10px] uppercase tracking-[0.25em] mb-6 animate-fade-in-up"
+            style={{ color: "rgba(106,187,122,0.8)" }}
           >
-            <svg
-              width={160}
-              height={160}
-              viewBox="0 0 120 120"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <rect width="120" height="120" rx="12" fill="#1F4A30" />
-              <line x1="8" y1="20" x2="52" y2="20" stroke="#6ABB7A" strokeWidth="3" strokeLinecap="round" />
-              <line x1="23" y1="30" x2="37" y2="30" stroke="#4A8A5A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="23" y1="38" x2="37" y2="38" stroke="#4A8A5A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="20" y1="46" x2="40" y2="46" stroke="#4A8A5A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="18" y1="54" x2="42" y2="54" stroke="#4A8A5A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="23" y1="62" x2="37" y2="62" stroke="#4A8A5A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="23" y1="70" x2="37" y2="70" stroke="#4A8A5A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="56" y1="35" x2="56" y2="85" stroke="#C9882A" strokeWidth="2" strokeLinecap="round" />
-              <polyline points="50,75 56,85 62,75" stroke="#C9882A" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <line x1="46" y1="55" x2="66" y2="55" stroke="#C9882A" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-              <line x1="78" y1="20" x2="112" y2="20" stroke="#C8EDD4" strokeWidth="3" strokeLinecap="round" />
-              <line x1="100" y1="30" x2="112" y2="30" stroke="#8AC89A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="98" y1="38" x2="112" y2="38" stroke="#8AC89A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="95" y1="46" x2="112" y2="46" stroke="#8AC89A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="100" y1="54" x2="112" y2="54" stroke="#8AC89A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="88" y1="62" x2="105" y2="62" stroke="#8AC89A" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="82" y1="70" x2="98" y2="70" stroke="#8AC89A" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="100" cy="100" r="8" stroke="#C9882A" strokeWidth="1.5" fill="none" />
-              <circle cx="100" cy="100" r="2.5" fill="#C9882A" />
-            </svg>
+            La plataforma de los traductores jurados de Espa&ntilde;a
+          </p>
+
+          <div style={{ color: "var(--color-text-light)" }}>
+            <HeroTextReveal
+              text="Tu herramienta. Todo en uno."
+              highlightWord="Todo"
+              className="font-playfair font-bold text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.1] mb-6"
+            />
           </div>
 
-          <div className="relative z-10 max-w-md mx-auto lg:mx-0">
-            <p
-              className="font-mono text-[9px] uppercase tracking-[0.2em] mb-4 animate-fade-in-up"
-              style={{ color: "#4A8A5A" }}
-            >
-              Traductor jurado MAEC
-            </p>
-            <h1 className="font-playfair font-bold text-[32px] leading-tight mb-4 animate-fade-in-up animate-delay-1" style={{ color: "var(--color-text-light)" }}>
-              Tu herramienta.
-              <br />
-              <em style={{ color: "var(--color-accent)", fontStyle: "italic" }}>Todo</em> en uno.
-            </h1>
-            <p className="font-sans font-light text-[13px] mb-8 animate-fade-in-up animate-delay-2" style={{ color: "var(--color-text-muted)" }}>
-              Sustituye Adobe, DeepL, Trados y tu app de facturación.
-            </p>
+          <p
+            className="font-sans font-light text-base sm:text-lg max-w-xl mx-auto mb-10 animate-fade-in-up animate-delay-4"
+            style={{ color: "rgba(255,255,255,0.6)" }}
+          >
+            Sustituye Adobe, DeepL, Trados y tu app de facturaci&oacute;n por una sola plataforma dise&ntilde;ada para traductores jurados.
+          </p>
 
-            <ul className="space-y-3 mb-8 animate-fade-in-up animate-delay-3">
-              {TRANSLATOR_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-sm" style={{ color: "var(--color-text-light)" }}>
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: "var(--color-accent)" }} />
-                  <span className="font-sans font-light">{f}</span>
-                </li>
-              ))}
-            </ul>
-
+          {/* Dual CTAs */}
+          <div
+            className="animate-fade-in-up animate-delay-5"
+            style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, marginBottom: 48, flexWrap: "wrap" }}
+          >
             <Link
               href="/auth/register"
-              className="inline-block font-sans font-medium text-sm px-6 py-3 rounded transition-colors animate-fade-in-up animate-delay-4"
-              style={{ backgroundColor: "var(--color-accent)", color: "#fff" }}
+              className="font-sans btn-glow"
+              style={{
+                display: "inline-block", fontWeight: 500, fontSize: 14,
+                padding: "14px 32px", borderRadius: 999,
+                backgroundColor: "var(--color-accent)", color: "#fff",
+                textDecoration: "none",
+                boxShadow: "0 4px 20px rgba(201,136,42,0.3)",
+              }}
             >
-              Acceder como traductor &rarr;
+              Empezar como traductor &rarr;
             </Link>
-
-            <p
-              className="font-mono text-[9px] mt-4 animate-fade-in-up animate-delay-5"
-              style={{ color: "#2A5A3A" }}
+            <Link
+              href="/translators"
+              className="font-sans"
+              style={{
+                display: "inline-block", fontWeight: 500, fontSize: 14,
+                padding: "14px 32px", borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.25)",
+                color: "rgba(255,255,255,0.85)", textDecoration: "none",
+              }}
             >
-              {"// 49\u20AC/mes precio fundador"}
-            </p>
+              Buscar traductor jurado
+            </Link>
+          </div>
+
+          {/* Feature pills */}
+          <div
+            className="animate-fade-in-up animate-delay-6"
+            style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 12 }}
+          >
+            {FEATURE_PILLS.map((pill) => (
+              <span
+                key={pill}
+                className="glass font-mono"
+                style={{ fontSize: 9, padding: "6px 12px", borderRadius: 999, color: "rgba(255,255,255,0.7)" }}
+              >
+                {pill}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Columna Cliente */}
+        {/* Bottom gradient fade */}
         <div
-          className="relative flex-1 flex flex-col justify-center px-8 md:px-16 py-16 lg:py-0"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderLeft: "0.5px solid var(--color-border)",
-          }}
-        >
-          <div className="relative z-10 max-w-md mx-auto lg:mx-0">
-            <p
-              className="font-mono text-[9px] uppercase tracking-[0.2em] mb-4 animate-fade-in-up"
-              style={{ color: "var(--color-accent)" }}
-            >
-              Necesito una traducción jurada
-            </p>
-            <h1 className="font-playfair font-bold text-[32px] leading-tight mb-4 animate-fade-in-up animate-delay-1" style={{ color: "var(--color-primary)" }}>
-              Encuentra tu traductor
-              <br />
-              <em style={{ color: "var(--color-accent)", fontStyle: "italic" }}>verificado</em> en 60 seg.
-            </h1>
-            <p className="font-sans font-light text-[13px] mb-8 animate-fade-in-up animate-delay-2" style={{ color: "var(--color-text-gray)" }}>
-              Solo traductores nombrados por el MAEC. Todos verificados. Sin intermediarios.
-            </p>
+          className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
+          style={{ background: "linear-gradient(to bottom, transparent, #fff)" }}
+        />
+      </section>
 
-            {/* Mockup directorio */}
-            <div className="bg-white rounded-lg border p-4 mb-8 animate-fade-in-up animate-delay-3" style={{ borderColor: "var(--color-border)" }}>
-              {/* Filter pills */}
+      {/* ─── S3: Trust Strip ─── */}
+      <section style={{ backgroundColor: "#fff", borderBottom: "1px solid var(--color-border)", padding: "24px" }}>
+        <div style={{ maxWidth: "64rem", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "24px" }}>
+          {TRUST_BADGES.map((badge) => (
+            <ScrollReveal key={badge.label} direction="up" delay={badge.delay}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: 40, height: 40, borderRadius: 8,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    backgroundColor: "var(--color-surface)", flexShrink: 0,
+                  }}
+                >
+                  {badge.icon}
+                </div>
+                <div>
+                  <p className="font-sans" style={{ fontSize: 12, fontWeight: 600, color: "var(--color-primary)", margin: 0 }}>
+                    {badge.label}
+                  </p>
+                  <p className="font-sans" style={{ fontSize: 10, color: "var(--color-text-gray)", margin: 0 }}>
+                    {badge.sub}
+                  </p>
+                </div>
+              </div>
+            </ScrollReveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── S4: Animated Stats ─── */}
+      <section style={{ padding: "80px 24px", backgroundColor: "#fff" }}>
+        <div style={{ maxWidth: "64rem", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "24px" }}>
+          {STATS.map((st) => (
+            <ScrollReveal key={st.label} direction="scale" delay={st.delay}>
+              <div
+                className="card-hover"
+                style={{
+                  borderRadius: 12, padding: 24, textAlign: "center",
+                  backgroundColor: "#fff", border: "1px solid var(--color-border)",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+                }}
+              >
+                <div className="font-playfair" style={{ fontWeight: 700, fontSize: "2rem", marginBottom: 8, color: "var(--color-primary)" }}>
+                  {st.isCounter ? (
+                    <AnimatedCounter
+                      target={st.numericValue!}
+                      prefix={st.prefix}
+                      suffix={st.suffix}
+                    />
+                  ) : (
+                    <span>{st.value}</span>
+                  )}
+                </div>
+                <p className="font-sans" style={{ fontSize: 12, color: "var(--color-text-gray)", margin: 0 }}>
+                  {st.label}
+                </p>
+              </div>
+            </ScrollReveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── S5: Convergence / Pricing ─── */}
+      <section className="py-20 px-6" style={{ backgroundColor: "var(--color-surface)" }}>
+        <div className="max-w-5xl mx-auto">
+          <ScrollReveal>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3 text-center" style={{ color: "var(--color-accent)" }}>
+              Ahorra desde el primer mes
+            </p>
+            <h2 className="font-playfair font-bold text-3xl md:text-4xl text-center mb-4" style={{ color: "var(--color-primary)" }}>
+              Cinco herramientas. Una sola plataforma.
+            </h2>
+            <p className="font-sans font-light text-sm text-center mb-14 max-w-xl mx-auto" style={{ color: "var(--color-text-gray)" }}>
+              El traductor jurado medio gasta m&aacute;s de 120&euro;/mes en herramientas fragmentadas.
+            </p>
+          </ScrollReveal>
+
+          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: "64px", flexWrap: "wrap" }}>
+            {/* Tools list */}
+            <ScrollReveal direction="left">
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", paddingTop: 32 }}>
+                {TOOLS.map((t) => (
+                  <div
+                    key={t.name}
+                    className="font-sans"
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      gap: 32, fontSize: 14, padding: "12px 20px", borderRadius: 8,
+                      border: "1px solid var(--color-border)", backgroundColor: "#fff",
+                    }}
+                  >
+                    <span style={{ textDecoration: "line-through", color: "var(--color-text-gray)" }}>{t.name}</span>
+                    <span className="font-mono" style={{ fontSize: 12, textDecoration: "line-through", color: "#cc4444" }}>{t.price}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 8, paddingRight: 4 }}>
+                  <span className="font-sans" style={{ fontSize: 14, fontWeight: 600, color: "#cc4444" }}>Total: ~123&euro;/mes</span>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* Arrow */}
+            <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+              <svg width="48" height="24" viewBox="0 0 48 24" fill="none">
+                <path d="M0 12H40M40 12L32 4M40 12L32 20" stroke="#C9882A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+
+            {/* MTJ card */}
+            <ScrollReveal direction="right">
+              <div
+                className="gradient-border animate-pulse-glow"
+                style={{
+                  position: "relative", borderRadius: 16, padding: 32,
+                  textAlign: "center", minWidth: 280,
+                  backgroundColor: "var(--color-primary)",
+                }}
+              >
+                {/* Badge */}
+                <span
+                  className="font-mono"
+                  style={{
+                    position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)",
+                    fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em",
+                    padding: "4px 16px", borderRadius: 999,
+                    backgroundColor: "var(--color-accent)", color: "#fff",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Plan Fundador
+                </span>
+
+                <p className="font-mono text-sm line-through mt-4 mb-1" style={{ color: "var(--color-text-muted)" }}>
+                  ~123&euro;/mes
+                </p>
+                <p className="font-playfair font-bold text-5xl mb-1 text-gradient">
+                  49&euro;
+                </p>
+                <p className="font-sans text-xs mb-6" style={{ color: "var(--color-text-muted)" }}>
+                  /mes &middot; para siempre
+                </p>
+
+                <div className="space-y-2.5 mb-8 text-left">
+                  {PLAN_FEATURES.map((f) => (
+                    <div key={f} className="flex items-center gap-2.5">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M3 7L6 10L11 4" stroke="#C9882A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span className="font-sans text-xs" style={{ color: "var(--color-text-light)" }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Link
+                  href="/auth/register"
+                  className="block w-full font-sans font-medium text-sm px-6 py-3 rounded-full btn-glow"
+                  style={{ backgroundColor: "var(--color-accent)", color: "#fff" }}
+                >
+                  Empezar ahora &rarr;
+                </Link>
+              </div>
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── S6: Product Showcase ─── */}
+      <section className="py-20 px-6 bg-white">
+        <ScrollReveal>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3 text-center" style={{ color: "var(--color-accent)" }}>
+            Tu plataforma
+          </p>
+          <h2 className="font-playfair font-bold text-3xl md:text-4xl text-center mb-4" style={{ color: "var(--color-primary)" }}>
+            Dise&ntilde;ada para traductores jurados
+          </h2>
+          <p className="font-sans font-light text-sm text-center mb-12 max-w-xl mx-auto" style={{ color: "var(--color-text-gray)" }}>
+            Editor bilingüe, dashboard de pedidos y directorio profesional. Todo integrado.
+          </p>
+        </ScrollReveal>
+        <ScrollReveal direction="scale" delay={200}>
+          <ProductShowcase />
+        </ScrollReveal>
+      </section>
+
+      {/* ─── S7: Feature Cards ─── */}
+      <section className="py-20 px-6" style={{ backgroundColor: "var(--color-surface)" }}>
+        <div className="max-w-5xl mx-auto">
+          <ScrollReveal>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: "var(--color-accent)" }}>
+              Para traductores jurados
+            </p>
+            <h2 className="font-playfair font-bold text-3xl mb-12" style={{ color: "var(--color-primary)" }}>
+              Herramientas profesionales
+            </h2>
+          </ScrollReveal>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px" }}>
+            {FEATURE_CARDS.map((c, i) => (
+              <ScrollReveal key={c.title} direction="up" delay={i * 100}>
+                <div
+                  className="card-hover"
+                  style={{
+                    backgroundColor: "#fff", borderRadius: 12, padding: 24,
+                    border: "1px solid var(--color-border)",
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                    height: "100%",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 48, height: 48, borderRadius: 10,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      marginBottom: 16,
+                      background: "linear-gradient(135deg, #1A3A2A, #2C5F3E)",
+                    }}
+                  >
+                    {c.icon}
+                  </div>
+                  <h3 className="font-sans font-semibold text-sm mb-2" style={{ color: "var(--color-primary)" }}>
+                    {c.title}
+                  </h3>
+                  <p className="font-sans font-light text-xs leading-relaxed" style={{ color: "var(--color-text-gray)" }}>
+                    {c.desc}
+                  </p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── S8: Para Clientes ─── */}
+      <section className="py-20 px-6 gradient-mesh-light relative dot-grid-light">
+        <div className="relative z-10" style={{ maxWidth: "64rem", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "48px", alignItems: "center" }}>
+          <ScrollReveal direction="left">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3" style={{ color: "var(--color-accent)" }}>
+                Para clientes
+              </p>
+              <h2 className="font-playfair font-bold text-3xl mb-4" style={{ color: "var(--color-primary)" }}>
+                Tu traducci&oacute;n jurada, sin intermediarios
+              </h2>
+              <p className="font-sans font-light text-sm leading-relaxed mb-6" style={{ color: "var(--color-text-gray)" }}>
+                Busca entre traductores jurados verificados por el MAEC. Filtra por idioma, provincia y especialidad. Contacta directamente, sin agencias.
+              </p>
+              <Link
+                href="/translators"
+                className="inline-block font-sans font-medium text-sm px-6 py-3 rounded-full transition-colors"
+                style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}
+              >
+                Explorar directorio &rarr;
+              </Link>
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal direction="right" delay={200}>
+            <div className="bg-white rounded-xl border p-5 shadow-lg card-hover" style={{ borderColor: "var(--color-border)" }}>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex-1 h-9 rounded-lg border px-3 flex items-center gap-2" style={{ borderColor: "var(--color-border)" }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <circle cx="6" cy="6" r="4" stroke="#999" strokeWidth="1.2" />
+                    <path d="M9.5 9.5L12.5 12.5" stroke="#999" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  <span className="font-sans text-[11px]" style={{ color: "#bbb" }}>Buscar por idioma, ciudad...</span>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2 mb-4">
-                {["FR → ES", "Málaga", "Jurídico", "Disponible"].map((pill) => (
+                {["Franc\u00e9s", "Madrid", "Jur\u00eddico"].map((pill) => (
                   <span
                     key={pill}
-                    className="font-mono text-[9px] px-2.5 py-1 rounded-full border"
-                    style={{ borderColor: "var(--color-border)", color: "var(--color-text-gray)" }}
+                    className="font-mono text-[9px] px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: "var(--color-primary)", color: "var(--color-text-light)" }}
                   >
                     {pill}
                   </span>
                 ))}
               </div>
-              {/* Translator rows */}
-              {heroTranslators.map((t, i) => (
+              {clientTranslators.map((t, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-3 py-2.5"
-                  style={{ borderTop: i > 0 ? "0.5px solid var(--color-border)" : "none" }}
+                  className="flex items-center gap-3 py-3"
+                  style={{ borderTop: i > 0 ? "1px solid var(--color-border)" : "none" }}
                 >
                   <div
-                    className="w-8 h-8 rounded-sm flex-shrink-0"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: "var(--color-primary)" }}
-                  />
+                  >
+                    <span className="font-sans text-[10px] font-medium" style={{ color: "#fff" }}>
+                      {t.name.split(" ").map(n => n[0]).slice(0, 2).join("")}
+                    </span>
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-sans text-xs font-medium truncate" style={{ color: "var(--color-text-dark)" }}>
-                      {t.name}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-sans text-xs font-medium" style={{ color: "var(--color-text-dark)" }}>
+                        {t.name}
+                      </p>
+                      <span className="font-mono text-[8px] px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-accent)" }}>
+                        {t.badge}
+                      </span>
+                    </div>
                     <p className="font-sans text-[10px]" style={{ color: "var(--color-text-gray)" }}>
                       {t.spec}
                     </p>
                   </div>
-                  <span className="font-mono text-[9px] font-medium" style={{ color: "var(--color-accent)" }}>
-                    {t.badge}
+                  <span className="font-mono text-[9px]" style={{ color: "var(--color-text-muted)" }}>
+                    {t.langs}
                   </span>
                 </div>
               ))}
             </div>
-
-            <Link
-              href="/translators"
-              className="inline-block font-sans font-medium text-sm px-6 py-3 rounded transition-colors animate-fade-in-up animate-delay-4"
-              style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}
-            >
-              Buscar traductor jurado &rarr;
-            </Link>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* ─── Banda central ─── */}
-      <section
-        className="py-4 flex items-center gap-4 px-6"
-        style={{ backgroundColor: "var(--color-primary)" }}
-      >
-        <div className="flex-1 h-px" style={{ backgroundColor: "#2A5A3A" }} />
-        <p className="font-mono text-[9px] tracking-[0.15em] text-center whitespace-nowrap" style={{ color: "#3A6A4A" }}>
-          La plataforma de los traductores jurados de España
-        </p>
-        <div className="flex-1 h-px" style={{ backgroundColor: "#2A5A3A" }} />
-      </section>
-
-      {/* ─── Stats bar ─── */}
-      <section className="bg-white">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4">
-          {STATS.map((st, i) => (
-            <div
-              key={st.label}
-              className="px-6 py-8 text-center"
-              style={{
-                borderRight: i < STATS.length - 1 ? "0.5px solid var(--color-border)" : "none",
-              }}
-            >
-              <p className="font-mono font-medium text-[15px]" style={{ color: "var(--color-primary)" }}>
-                {st.value}
-              </p>
-              <p className="font-sans text-[10px] mt-1" style={{ color: "#aaa" }}>
-                {st.label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Convergencia ─── */}
-      <section className="py-20 px-6" style={{ backgroundColor: "var(--color-surface)" }}>
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] mb-4" style={{ color: "var(--color-accent)" }}>
-            Ahorra desde el primer mes
-          </p>
-          <h2 className="font-playfair font-bold text-3xl md:text-4xl mb-3" style={{ color: "var(--color-primary)" }}>
-            Cinco herramientas.
-            <br />
-            Una sola plataforma.
-          </h2>
-          <p className="font-sans font-light text-sm mb-12 max-w-xl mx-auto" style={{ color: "var(--color-text-gray)" }}>
-            El traductor jurado medio gasta más de 120€/mes en herramientas fragmentadas.
-          </p>
-
-          {/* Diagrama convergencia */}
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
-            {/* Herramientas */}
-            <div className="space-y-2">
-              {TOOLS.map((t) => (
-                <div
-                  key={t.name}
-                  className="flex items-center justify-between gap-6 font-sans text-sm px-4 py-2 rounded border"
-                  style={{
-                    borderColor: "var(--color-border)",
-                    backgroundColor: "white",
-                    opacity: t.faded ? 0.35 : 1,
-                  }}
-                >
-                  <span style={{ color: "var(--color-text-dark)" }}>{t.name}</span>
-                  <span className="font-mono text-xs" style={{ color: "var(--color-text-gray)" }}>{t.price}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Flechas SVG */}
-            <div className="hidden md:flex flex-col items-center">
-              <svg width="48" height="120" viewBox="0 0 48 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M8 10 L24 60 L40 10" stroke="#C9882A" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                <path d="M8 110 L24 60 L40 110" stroke="#C9882A" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                <circle cx="24" cy="60" r="4" fill="#C9882A" />
-              </svg>
-            </div>
-
-            {/* Resultado */}
-            <div
-              className="rounded-lg p-6 text-center min-w-[200px]"
-              style={{ backgroundColor: "var(--color-primary)" }}
-            >
-              <p className="font-mono text-sm line-through mb-1" style={{ color: "var(--color-text-muted)" }}>
-                ~123€/mes
-              </p>
-              <p className="font-playfair font-bold text-3xl mb-2" style={{ color: "var(--color-accent)" }}>
-                49€<span className="text-base font-normal">/mes</span>
-              </p>
-              <div className="space-y-1 mt-4">
-                {["Editor + DeepL", "Firma eIDAS", "Verifactu AEAT", "Stripe Connect", "Red de colegas"].map((f) => (
-                  <p key={f} className="font-sans text-[11px]" style={{ color: "var(--color-text-light)" }}>
-                    {f}
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Para traductores ─── */}
+      {/* ─── S9: How It Works ─── */}
       <section className="py-20 px-6 bg-white">
-        <div className="max-w-5xl mx-auto">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] mb-3" style={{ color: "var(--color-accent)" }}>
-            Para traductores jurados
-          </p>
-          <h2 className="font-playfair font-bold text-3xl mb-12" style={{ color: "var(--color-primary)" }}>
-            Herramientas profesionales
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {TRANSLATOR_CARDS.map((c) => (
-              <div
-                key={c.title}
-                className="p-6 bg-white"
-                style={{ borderLeft: "3px solid var(--color-accent)" }}
-              >
-                {/* Inline SVG icon */}
-                <div className="mb-4">
-                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {c.iconPath}
-                  </svg>
-                </div>
-                <h3 className="font-sans font-medium text-sm mb-2" style={{ color: "var(--color-primary)" }}>
-                  {c.title}
-                </h3>
-                <p className="font-sans font-light text-xs leading-relaxed" style={{ color: "var(--color-text-gray)" }}>
-                  {c.desc}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Para clientes ─── */}
-      <section className="py-20 px-6" style={{ backgroundColor: "var(--color-surface)" }}>
-        <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-          <div>
-            <p className="font-mono text-[9px] uppercase tracking-[0.2em] mb-3" style={{ color: "var(--color-accent)" }}>
-              Para clientes
+        <div className="max-w-4xl mx-auto">
+          <ScrollReveal>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-3 text-center" style={{ color: "var(--color-accent)" }}>
+              C&oacute;mo funciona
             </p>
-            <h2 className="font-playfair font-bold text-3xl mb-4" style={{ color: "var(--color-primary)" }}>
-              Tu traducción jurada, sin intermediarios
+            <h2 className="font-playfair font-bold text-3xl text-center mb-16" style={{ color: "var(--color-primary)" }}>
+              Tres pasos simples
             </h2>
-            <p className="font-sans font-light text-sm leading-relaxed mb-6" style={{ color: "var(--color-text-gray)" }}>
-              Busca entre traductores jurados verificados por el MAEC. Filtra por idioma, provincia y especialidad. Contacta directamente, sin agencias.
-            </p>
-            <Link
-              href="/translators"
-              className="inline-block font-sans font-medium text-sm px-6 py-3 rounded transition-colors"
-              style={{ backgroundColor: "var(--color-primary)", color: "#fff" }}
-            >
-              Explorar directorio &rarr;
-            </Link>
-          </div>
+          </ScrollReveal>
 
-          {/* Mockup directorio expandido */}
-          <div className="bg-white rounded-lg border p-5" style={{ borderColor: "var(--color-border)" }}>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex-1 h-8 rounded border px-3 flex items-center" style={{ borderColor: "var(--color-border)" }}>
-                <span className="font-sans text-[11px]" style={{ color: "#bbb" }}>Buscar por idioma, ciudad...</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {["Francés", "Madrid", "Jurídico"].map((pill) => (
-                <span
-                  key={pill}
-                  className="font-mono text-[9px] px-2.5 py-1 rounded-full"
-                  style={{ backgroundColor: "var(--color-primary)", color: "var(--color-text-light)" }}
-                >
-                  {pill}
-                </span>
-              ))}
-            </div>
-            {clientTranslators.map((t, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 py-3"
-                style={{ borderTop: i > 0 ? "0.5px solid var(--color-border)" : "none" }}
-              >
-                <div
-                  className="w-10 h-10 rounded-sm flex-shrink-0"
-                  style={{ backgroundColor: "var(--color-primary)" }}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-sans text-xs font-medium" style={{ color: "var(--color-text-dark)" }}>
-                      {t.name}
-                    </p>
-                    <span className="font-mono text-[8px] px-1.5 py-0.5 rounded" style={{ backgroundColor: "var(--color-surface)", color: "var(--color-accent)" }}>
-                      {t.badge}
-                    </span>
-                  </div>
-                  <p className="font-sans text-[10px]" style={{ color: "var(--color-text-gray)" }}>
-                    {t.spec}
-                  </p>
-                </div>
-                <span className="font-mono text-[9px]" style={{ color: "var(--color-text-muted)" }}>
-                  {t.langs}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Cómo funciona ─── */}
-      <section className="py-20 px-6 bg-white">
-        <div className="max-w-3xl mx-auto">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] mb-3 text-center" style={{ color: "var(--color-accent)" }}>
-            Cómo funciona
-          </p>
-          <h2 className="font-playfair font-bold text-3xl text-center mb-14" style={{ color: "var(--color-primary)" }}>
-            Tres pasos simples
-          </h2>
-          <div className="space-y-0">
+          {/* Desktop: horizontal timeline */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "32px", position: "relative" }}>
+            {/* Connecting line */}
+            <div
+              className="absolute top-8 left-[16.67%] right-[16.67%] h-0.5"
+              style={{ backgroundColor: "var(--color-border)" }}
+            />
             {STEPS.map((step, i) => (
-              <div key={step.title} className="flex gap-6">
-                {/* Number + connector */}
-                <div className="flex flex-col items-center">
+              <ScrollReveal key={step.title} direction="up" delay={i * 150}>
+                <div className="text-center relative">
                   <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center font-mono font-medium text-sm flex-shrink-0"
-                    style={{ backgroundColor: "var(--color-accent)", color: "#fff" }}
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 relative z-10"
+                    style={{
+                      background: "linear-gradient(135deg, var(--color-accent), #D4A04A)",
+                      boxShadow: "0 4px 20px rgba(201,136,42,0.3)",
+                    }}
                   >
-                    {i + 1}
+                    <span className="font-playfair font-bold text-xl" style={{ color: "#fff" }}>{i + 1}</span>
                   </div>
-                  {i < STEPS.length - 1 && (
-                    <div className="w-px flex-1 my-2" style={{ backgroundColor: "var(--color-border)" }} />
-                  )}
-                </div>
-                {/* Content */}
-                <div className="pb-10">
-                  <h3 className="font-sans font-medium text-sm mb-1" style={{ color: "var(--color-primary)" }}>
+                  <h3 className="font-sans font-semibold text-sm mb-2" style={{ color: "var(--color-primary)" }}>
                     {step.title}
                   </h3>
                   <p className="font-sans font-light text-xs leading-relaxed" style={{ color: "var(--color-text-gray)" }}>
                     {step.desc}
                   </p>
                 </div>
-              </div>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          {/* Mobile: vertical */}
+          <div className="md:hidden space-y-0">
+            {STEPS.map((step, i) => (
+              <ScrollReveal key={step.title} direction="up" delay={i * 100}>
+                <div className="flex gap-5">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: "linear-gradient(135deg, var(--color-accent), #D4A04A)" }}
+                    >
+                      <span className="font-playfair font-bold text-sm" style={{ color: "#fff" }}>{i + 1}</span>
+                    </div>
+                    {i < STEPS.length - 1 && (
+                      <div className="w-px flex-1 my-2" style={{ backgroundColor: "var(--color-border)" }} />
+                    )}
+                  </div>
+                  <div className="pb-8">
+                    <h3 className="font-sans font-semibold text-sm mb-1" style={{ color: "var(--color-primary)" }}>
+                      {step.title}
+                    </h3>
+                    <p className="font-sans font-light text-xs leading-relaxed" style={{ color: "var(--color-text-gray)" }}>
+                      {step.desc}
+                    </p>
+                  </div>
+                </div>
+              </ScrollReveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
-      <footer
-        className="py-10 px-6"
-        style={{
-          backgroundColor: "var(--color-footer)",
-          borderTop: "0.5px solid var(--color-primary)",
-        }}
-      >
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <Logo size="sm" variant="dark" />
-          <div className="flex gap-6">
-            {[
-              { label: "Directorio", href: "/translators" },
-              { label: "Acceder", href: "/auth/login" },
-            ].map((link) => (
+      {/* ─── S10: CTA Band ─── */}
+      <section className="relative py-20 px-6 gradient-mesh-dark dot-grid overflow-hidden">
+        <div className="relative z-10 max-w-3xl mx-auto text-center">
+          <ScrollReveal>
+            <span
+              className="inline-block font-mono text-[9px] uppercase tracking-wider px-4 py-1.5 rounded-full mb-6"
+              style={{ backgroundColor: "rgba(201,136,42,0.2)", color: "var(--color-accent)" }}
+            >
+              Plazas limitadas
+            </span>
+            <h2 className="font-playfair font-bold text-3xl md:text-4xl mb-3" style={{ color: "var(--color-text-light)" }}>
+              Plan Fundador: 49&euro;/mes
+            </h2>
+            <p className="font-playfair italic text-lg mb-2 text-gradient">
+              para siempre
+            </p>
+            <p className="font-sans font-light text-sm mb-10 max-w-md mx-auto" style={{ color: "rgba(255,255,255,0.6)" }}>
+              Precio de lanzamiento exclusivo para los primeros suscriptores. Una vez que se cierre, no volver&aacute; a estar disponible.
+            </p>
+            <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
               <Link
-                key={link.label}
-                href={link.href}
-                className="font-sans font-light text-xs transition-colors"
-                style={{ color: "#3A6A4A" }}
+                href="/auth/register"
+                className="font-sans btn-glow"
+                style={{
+                  display: "inline-block", fontWeight: 500, fontSize: 14,
+                  padding: "14px 32px", borderRadius: 999,
+                  backgroundColor: "var(--color-accent)", color: "#fff",
+                  textDecoration: "none", boxShadow: "0 4px 20px rgba(201,136,42,0.3)",
+                }}
               >
-                {link.label}
+                Reservar mi plaza &rarr;
               </Link>
-            ))}
-          </div>
-          <p className="font-playfair italic text-xs" style={{ color: "#2A4A3A" }}>
-            Hecho por traductores, para traductores.
-          </p>
+              <Link
+                href="/translators"
+                className="font-sans"
+                style={{
+                  display: "inline-block", fontWeight: 500, fontSize: 14,
+                  padding: "14px 32px", borderRadius: 999,
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  color: "rgba(255,255,255,0.85)", textDecoration: "none",
+                }}
+              >
+                Soy cliente
+              </Link>
+            </div>
+          </ScrollReveal>
         </div>
-        <div className="max-w-6xl mx-auto mt-6 pt-4" style={{ borderTop: "0.5px solid #1A3A2A" }}>
-          <p className="font-sans font-light text-[10px]" style={{ color: "#2A4A3A" }}>
-            &copy; {new Date().getFullYear()} HBTJ Consultores Lingüísticos S.L.
-          </p>
+      </section>
+
+      {/* ─── S11: Footer ─── */}
+      <footer
+        className="py-16 px-6"
+        style={{ backgroundColor: "var(--color-footer)" }}
+      >
+        <div className="max-w-6xl mx-auto">
+          {/* Top row */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "40px", marginBottom: "48px" }}>
+            {/* Col 1: Logo + tagline */}
+            <div>
+              <Logo size="sm" variant="dark" />
+              <p className="font-playfair italic text-xs mt-4 leading-relaxed" style={{ color: "rgba(255,255,255,0.3)" }}>
+                Hecho por traductores,
+                <br />
+                para traductores.
+              </p>
+            </div>
+            {/* Col 2: Plataforma */}
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-wider mb-4" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Plataforma
+              </p>
+              <div className="space-y-2.5">
+                {[
+                  { label: "Directorio", href: "/translators" },
+                  { label: "Acceder", href: "/auth/login" },
+                  { label: "Registrarse", href: "/auth/register" },
+                ].map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="block font-sans text-xs transition-colors"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            {/* Col 3: Legal */}
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-wider mb-4" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Legal
+              </p>
+              <div className="space-y-2.5">
+                {[
+                  { label: "Aviso legal", href: "#" },
+                  { label: "Pol\u00edtica de privacidad", href: "#" },
+                  { label: "Condiciones de uso", href: "#" },
+                ].map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="block font-sans text-xs transition-colors"
+                    style={{ color: "rgba(255,255,255,0.4)" }}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            {/* Col 4: Confianza */}
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-wider mb-4" style={{ color: "rgba(255,255,255,0.4)" }}>
+                Confianza
+              </p>
+              <div className="space-y-3">
+                {[
+                  "Registro MAEC oficial",
+                  "Firma eIDAS cualificada",
+                  "Facturación Verifactu",
+                  "Pagos Stripe Connect",
+                ].map((badge) => (
+                  <div key={badge} className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "var(--color-accent)" }} />
+                    <span className="font-sans text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                      {badge}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Divider + copyright */}
+          <div className="pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="font-sans font-light text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+              &copy; {new Date().getFullYear()} HBTJ Consultores Lingüísticos S.L. &middot; CIF: B-XXXXXXXX
+            </p>
+          </div>
         </div>
       </footer>
     </main>
@@ -572,59 +738,155 @@ export default async function Home() {
 
 /* ─── Data ─── */
 
-const TRANSLATOR_FEATURES = [
-  "Dashboard de pedidos",
-  "Editor bilingüe + DeepL",
-  "Firma eIDAS + Verifactu",
-  "Red de colegas + Widget",
+const FEATURE_PILLS = [
+  "Editor + DeepL",
+  "Firma eIDAS",
+  "Verifactu AEAT",
+  "Red de colegas",
+  "Stripe Connect",
+];
+
+const TRUST_BADGES = [
+  {
+    label: "MAEC",
+    sub: "10.624 traductores",
+    delay: 0,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="7" stroke="#1A3A2A" strokeWidth="1.5" />
+        <circle cx="10" cy="10" r="2.5" fill="#1A3A2A" />
+      </svg>
+    ),
+  },
+  {
+    label: "eIDAS",
+    sub: "Firma cualificada",
+    delay: 100,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M5 10L8.5 13.5L15 6.5" stroke="#1A3A2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    label: "Verifactu",
+    sub: "AEAT 2027",
+    delay: 200,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="4" y="3" width="12" height="14" rx="1.5" stroke="#1A3A2A" strokeWidth="1.5" />
+        <line x1="7" y1="7" x2="13" y2="7" stroke="#1A3A2A" strokeWidth="1" strokeLinecap="round" />
+        <line x1="7" y1="10" x2="13" y2="10" stroke="#1A3A2A" strokeWidth="1" strokeLinecap="round" />
+        <line x1="7" y1="13" x2="11" y2="13" stroke="#1A3A2A" strokeWidth="1" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    label: "Stripe",
+    sub: "Pagos seguros",
+    delay: 300,
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="5" width="16" height="10" rx="2" stroke="#1A3A2A" strokeWidth="1.5" />
+        <line x1="2" y1="9" x2="18" y2="9" stroke="#1A3A2A" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
 ];
 
 const STATS = [
-  { value: "~1.200", label: "traductores MAEC" },
-  { value: "eIDAS", label: "firma certificada" },
-  { value: "Verifactu", label: "listo AEAT 2027" },
-  { value: "49€", label: "precio fundador/mes" },
+  { value: "10.624", label: "traductores MAEC", isCounter: true, numericValue: 10624, prefix: "", suffix: "", delay: 0 },
+  { value: "32+", label: "idiomas oficiales", isCounter: true, numericValue: 32, prefix: "", suffix: "+", delay: 100 },
+  { value: "52", label: "provincias cubiertas", isCounter: true, numericValue: 52, prefix: "", suffix: "", delay: 200 },
+  { value: "49\u20AC", label: "precio fundador/mes", isCounter: true, numericValue: 49, prefix: "", suffix: "\u20AC", delay: 300 },
 ];
 
 const TOOLS = [
-  { name: "Adobe Acrobat", price: "25€/mes", faded: false },
-  { name: "DeepL Pro", price: "22€/mes", faded: false },
-  { name: "SDL Trados", price: "45€/mes", faded: false },
-  { name: "Signaturit", price: "19€/mes", faded: true },
-  { name: "Facturación", price: "12€/mes", faded: true },
+  { name: "Adobe Acrobat", price: "25\u20AC/mes" },
+  { name: "DeepL Pro", price: "22\u20AC/mes" },
+  { name: "SDL Trados", price: "45\u20AC/mes" },
+  { name: "Signaturit", price: "19\u20AC/mes" },
+  { name: "App facturaci\u00f3n", price: "12\u20AC/mes" },
 ];
 
-const TRANSLATOR_CARDS = [
+const PLAN_FEATURES = [
+  "Editor bilingüe + DeepL integrado",
+  "Firma electr\u00f3nica eIDAS cualificada",
+  "Facturaci\u00f3n Verifactu AEAT",
+  "Cobros Stripe Connect",
+  "Red de colegas + delegaci\u00f3n",
+  "Widget embebible para tu web",
+  "35 plantillas de documentos",
+  "Soporte prioritario",
+];
+
+const FEATURE_CARDS = [
   {
     title: "Dashboard de pedidos",
-    desc: "Gestiona presupuestos, aceptación, seguimiento y entrega. Todo el flujo del pedido en un solo lugar.",
-    iconPath: (
-      <>
-        <rect x="3" y="5" width="22" height="18" rx="2" stroke="#1A3A2A" strokeWidth="1.5" fill="none" />
-        <line x1="3" y1="11" x2="25" y2="11" stroke="#1A3A2A" strokeWidth="1.5" />
-        <line x1="10" y1="11" x2="10" y2="23" stroke="#1A3A2A" strokeWidth="1.5" />
-      </>
+    desc: "Gestiona presupuestos, aceptaci\u00f3n, seguimiento y entrega. Todo el flujo del pedido en un solo lugar.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="4" width="18" height="16" rx="2" stroke="#fff" strokeWidth="1.5" />
+        <line x1="3" y1="10" x2="21" y2="10" stroke="#fff" strokeWidth="1.5" />
+        <line x1="9" y1="10" x2="9" y2="20" stroke="#fff" strokeWidth="1.5" />
+      </svg>
     ),
   },
   {
     title: "Editor bilingüe + DeepL",
-    desc: "Editor de traducción con segmentos paralelos, traducción automática integrada y control de progreso.",
-    iconPath: (
-      <>
-        <rect x="2" y="4" width="10" height="20" rx="1" stroke="#1A3A2A" strokeWidth="1.5" fill="none" />
-        <rect x="16" y="4" width="10" height="20" rx="1" stroke="#1A3A2A" strokeWidth="1.5" fill="none" />
-        <path d="M12 11 L16 14 L12 17" stroke="#C9882A" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </>
+    desc: "Editor de traducci\u00f3n con segmentos paralelos, traducci\u00f3n autom\u00e1tica integrada y control de progreso.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="3" width="8" height="18" rx="1" stroke="#fff" strokeWidth="1.5" />
+        <rect x="14" y="3" width="8" height="18" rx="1" stroke="#fff" strokeWidth="1.5" />
+        <path d="M10 10L14 12L10 14" stroke="#C9882A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     ),
   },
   {
     title: "Firma eIDAS + Verifactu",
-    desc: "Firma electrónica cualificada y facturación Verifactu AEAT integradas. Cumplimiento automático.",
-    iconPath: (
-      <>
-        <path d="M6 14 L11 19 L22 8" stroke="#1A3A2A" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="14" cy="14" r="11" stroke="#1A3A2A" strokeWidth="1.5" fill="none" />
-      </>
+    desc: "Firma electr\u00f3nica cualificada y facturaci\u00f3n Verifactu AEAT integradas. Cumplimiento autom\u00e1tico.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M5 12L9.5 16.5L19 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="9.5" stroke="#fff" strokeWidth="1.5" />
+      </svg>
+    ),
+  },
+  {
+    title: "Red de colegas",
+    desc: "Delega pedidos a colegas de confianza. El cliente siempre contrata contigo, t\u00fa gestionas la asignaci\u00f3n.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="8" r="3.5" stroke="#fff" strokeWidth="1.5" />
+        <circle cx="5" cy="17" r="2.5" stroke="#fff" strokeWidth="1.2" />
+        <circle cx="19" cy="17" r="2.5" stroke="#fff" strokeWidth="1.2" />
+        <path d="M8.5 11L5 14.5M15.5 11L19 14.5" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Widget embebible",
+    desc: "A\u00f1ade un formulario de contacto a tu web personal. Los clientes te solicitan presupuesto directamente.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="18" height="18" rx="2" stroke="#fff" strokeWidth="1.5" />
+        <path d="M8 9L5 12L8 15" stroke="#C9882A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M16 9L19 12L16 15" stroke="#C9882A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    title: "Plantillas de documentos",
+    desc: "35 plantillas predefinidas para los documentos m\u00e1s comunes: actas, certificados, poderes, contratos y m\u00e1s.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <rect x="5" y="2" width="14" height="18" rx="1.5" stroke="#fff" strokeWidth="1.5" />
+        <line x1="8" y1="7" x2="16" y2="7" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
+        <line x1="8" y1="10" x2="16" y2="10" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
+        <line x1="8" y1="13" x2="13" y2="13" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
+        <rect x="3" y="4" width="14" height="18" rx="1.5" stroke="#fff" strokeWidth="1" opacity="0.3" />
+      </svg>
     ),
   },
 ];
@@ -636,10 +898,10 @@ const STEPS = [
   },
   {
     title: "Solicita presupuesto",
-    desc: "Envía tu documento y recibe un presupuesto detallado directamente del traductor. Sin intermediarios.",
+    desc: "Env\u00eda tu documento y recibe un presupuesto detallado directamente del traductor. Sin intermediarios.",
   },
   {
-    title: "Recibe tu traducción",
-    desc: "El traductor trabaja con herramientas profesionales. Recibes la traducción firmada electrónicamente con validez eIDAS.",
+    title: "Recibe tu traducci\u00f3n",
+    desc: "El traductor trabaja con herramientas profesionales. Recibes la traducci\u00f3n firmada electr\u00f3nicamente con validez eIDAS.",
   },
 ];

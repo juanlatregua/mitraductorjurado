@@ -57,6 +57,35 @@ const config: Config = {
           900: "#633812",
         },
       },
+      animation: {
+        float: "float 6s ease-in-out infinite",
+        "float-delayed": "floatDelayed 7s ease-in-out infinite",
+        "pulse-glow": "pulseGlow 3s ease-in-out infinite",
+        shimmer: "shimmer 3s linear infinite",
+        "gradient-shift": "gradientShift 8s ease-in-out infinite",
+      },
+      keyframes: {
+        float: {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "50%": { transform: "translateY(-14px) rotate(1deg)" },
+        },
+        floatDelayed: {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "50%": { transform: "translateY(-10px) rotate(-1deg)" },
+        },
+        pulseGlow: {
+          "0%, 100%": { boxShadow: "0 0 20px rgba(201,136,42,0.15)" },
+          "50%": { boxShadow: "0 0 40px rgba(201,136,42,0.35), 0 0 80px rgba(201,136,42,0.1)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        gradientShift: {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
+      },
       fontFamily: {
         playfair: ["var(--font-playfair)", "Playfair Display", "Georgia", "serif"],
         sans: ["var(--font-dm-sans)", "DM Sans", "system-ui", "sans-serif"],

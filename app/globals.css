@@ -55,3 +55,164 @@
 .animate-delay-4 { animation-delay: 0.4s; }
 .animate-delay-5 { animation-delay: 0.5s; }
 .animate-delay-6 { animation-delay: 0.6s; }
+
+/* ─── Float animations ─── */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(1deg); }
+}
+@keyframes floatDelayed {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(-1deg); }
+}
+
+/* ─── Pulse glow ─── */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(201,136,42,0.15); }
+  50% { box-shadow: 0 0 40px rgba(201,136,42,0.35), 0 0 80px rgba(201,136,42,0.1); }
+}
+
+/* ─── Shimmer ─── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ─── Scale in ─── */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Slide in left/right ─── */
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Gradient shift ─── */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ─── Glass utilities ─── */
+.glass {
+  background: rgba(26, 58, 42, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.glass-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #E8E2D8;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+
+/* ─── Gradient meshes ─── */
+.gradient-mesh-dark {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(44,95,62,0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 30%, rgba(201,136,42,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(7,15,10,0.8) 0%, transparent 60%),
+    var(--color-primary);
+}
+.gradient-mesh-light {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(44,95,62,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 30%, rgba(201,136,42,0.06) 0%, transparent 60%),
+    var(--color-surface);
+}
+
+/* ─── Dot grid overlays ─── */
+.dot-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+.dot-grid-light::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(26,58,42,0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+/* ─── Button glow ─── */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.3s;
+}
+.btn-glow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 30px rgba(201,136,42,0.4), 0 4px 20px rgba(201,136,42,0.2);
+}
+.btn-glow::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(201,136,42,0.3), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.btn-glow:hover::after {
+  opacity: 1;
+}
+
+/* ─── Gradient text ─── */
+.text-gradient {
+  background: linear-gradient(135deg, #C9882A 0%, #D4A04A 50%, #C9882A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Card hover effect ─── */
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+}
+
+/* ─── Gradient border ─── */
+.gradient-border {
+  position: relative;
+  background-clip: padding-box;
+}
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg, #C9882A, #2C5F3E, #C9882A);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ─── Animation utility classes ─── */
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-float-delayed { animation: floatDelayed 7s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
