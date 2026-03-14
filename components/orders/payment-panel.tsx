@@ -24,6 +24,13 @@ const STATUS_MAP: Record<string, { label: string; color: string }> = {
   failed: { label: "Fallido", color: "bg-red-100 text-red-700" },
 };
 
+const IVA_RATE = 0.21;
+
+function priceBreakdown(base: number) {
+  const iva = base * IVA_RATE;
+  return { base, iva, total: base + iva };
+}
+
 export function PaymentPanel({ orderId, role, orderStatus, price }: PaymentPanelProps) {
   const [payment, setPayment] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,22 +112,34 @@ export function PaymentPanel({ orderId, role, orderStatus, price }: PaymentPanel
             </span>
           </div>
 
-          <dl className="grid grid-cols-2 gap-3 text-sm">
+          <dl className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <dt className="text-navy-500">Base imponible</dt>
+              <dd className="font-medium text-navy-900">
+                {(payment.amount / (1 + IVA_RATE)).toFixed(2)} €
+              </dd>
+            </div>
+            <div>
+              <dt className="text-navy-500">IVA (21%)</dt>
+              <dd className="font-medium text-navy-900">
+                {(payment.amount - payment.amount / (1 + IVA_RATE)).toFixed(2)} €
+              </dd>
+            </div>
             <div>
               <dt className="text-navy-500">Total</dt>
               <dd className="font-bold text-navy-900 text-lg">
                 {payment.amount.toFixed(2)} €
               </dd>
             </div>
-            {role === "translator" && (
-              <div>
-                <dt className="text-navy-500">Recibirás</dt>
-                <dd className="font-bold text-green-600 text-lg">
-                  {payment.translatorAmount.toFixed(2)} €
-                </dd>
-              </div>
-            )}
           </dl>
+          {role === "translator" && (
+            <div className="mt-2 text-sm">
+              <dt className="text-navy-500 inline">Recibirás: </dt>
+              <dd className="font-bold text-green-600 inline">
+                {payment.translatorAmount.toFixed(2)} €
+              </dd>
+            </div>
+          )}
 
           {payment.status === "succeeded" && (
             <p className="text-xs text-green-600">
@@ -133,19 +152,34 @@ export function PaymentPanel({ orderId, role, orderStatus, price }: PaymentPanel
         role === "client" &&
         orderStatus === "accepted" &&
         price && (
-          <div>
-            <p className="text-sm text-navy-600 mb-3">
-              Realiza el pago de <strong>{price.toFixed(2)} €</strong> para
-              que el traductor comience a trabajar.
-            </p>
-            <button
-              onClick={handlePay}
-              disabled={paying}
-              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
-            >
-              {paying ? "Procesando..." : `Pagar ${price.toFixed(2)} €`}
-            </button>
-          </div>
+          (() => {
+            const b = priceBreakdown(price);
+            return (
+              <div>
+                <dl className="grid grid-cols-3 gap-3 text-sm mb-4">
+                  <div>
+                    <dt className="text-navy-500">Base imponible</dt>
+                    <dd className="font-medium text-navy-900">{b.base.toFixed(2)} €</dd>
+                  </div>
+                  <div>
+                    <dt className="text-navy-500">IVA (21%)</dt>
+                    <dd className="font-medium text-navy-900">{b.iva.toFixed(2)} €</dd>
+                  </div>
+                  <div>
+                    <dt className="text-navy-500">Total</dt>
+                    <dd className="font-bold text-navy-900 text-lg">{b.total.toFixed(2)} €</dd>
+                  </div>
+                </dl>
+                <button
+                  onClick={handlePay}
+                  disabled={paying}
+                  className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  {paying ? "Procesando..." : `Pagar ${b.total.toFixed(2)} €`}
+                </button>
+              </div>
+            );
+          })()
         )
       )}
     </div>

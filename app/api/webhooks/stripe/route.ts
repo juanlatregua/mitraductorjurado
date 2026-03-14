@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { sendPaymentConfirmation } from "@/lib/email";
 import Stripe from "stripe";
 
 // Desactivar body parsing — Stripe necesita el raw body
@@ -39,10 +40,21 @@ export async function POST(req: NextRequest) {
         });
 
         // Mover pedido a in_progress automáticamente
-        await prisma.order.update({
+        const order = await prisma.order.update({
           where: { id: orderId },
           data: { status: "in_progress" },
+          include: { client: true, payment: true },
         });
+
+        // Enviar confirmación de pago al cliente
+        if (order.client.email && order.payment) {
+          await sendPaymentConfirmation(
+            order.client.email,
+            order.client.name || "Cliente",
+            orderId,
+            order.payment.amount
+          );
+        }
       }
       break;
     }
@@ -65,6 +77,37 @@ export async function POST(req: NextRequest) {
           data: { stripeOnboarded: true },
         });
       }
+      break;
+    }
+
+    // ─── Suscripciones ───
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      const sub = event.data.object as Stripe.Subscription;
+      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+
+      await prisma.subscription.updateMany({
+        where: { stripeSubscriptionId: sub.id },
+        data: {
+          status: sub.status,
+          currentPeriodEnd: new Date(sub.current_period_end * 1000),
+          cancelledAt: sub.canceled_at
+            ? new Date(sub.canceled_at * 1000)
+            : null,
+        },
+      });
+      break;
+    }
+
+    case "customer.subscription.deleted": {
+      const sub = event.data.object as Stripe.Subscription;
+      await prisma.subscription.updateMany({
+        where: { stripeSubscriptionId: sub.id },
+        data: {
+          status: "canceled",
+          cancelledAt: new Date(),
+        },
+      });
       break;
     }
   }

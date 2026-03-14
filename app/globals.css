@@ -4,17 +4,54 @@
 
 @layer base {
   :root {
+    /* Sistema de color mitraductorjurado.es */
+    --color-primary: #1A3A2A;
+    --color-primary-mid: #2C5F3E;
+    --color-accent: #C9882A;
+    --color-surface: #FAF7F2;
+    --color-white: #FFFFFF;
+    --color-text-dark: #1C1917;
+    --color-text-light: #F0EBE0;
+    --color-text-muted: #6A9A7A;
+    --color-text-gray: #888888;
+    --color-border: #E8E2D8;
+    --color-footer: #070F0A;
+
+    /* Legacy — dashboards */
     --background: #ffffff;
     --foreground: #102a43;
   }
 
   body {
-    color: var(--foreground);
-    background: var(--background);
-    font-family: "Inter", system-ui, sans-serif;
+    color: var(--color-text-dark);
+    background: var(--color-white);
+    font-family: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: Georgia, Cambria, "Times New Roman", serif;
+    font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
   }
 }
+
+/* Animaciones de entrada */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s ease-out both;
+}
+
+.animate-delay-1 { animation-delay: 0.1s; }
+.animate-delay-2 { animation-delay: 0.2s; }
+.animate-delay-3 { animation-delay: 0.3s; }
+.animate-delay-4 { animation-delay: 0.4s; }
+.animate-delay-5 { animation-delay: 0.5s; }
+.animate-delay-6 { animation-delay: 0.6s; }

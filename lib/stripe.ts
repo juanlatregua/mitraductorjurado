@@ -112,4 +112,93 @@ export async function getStripeDashboardLink(
   return loginLink.url;
 }
 
+// ─── SUSCRIPCIONES (Billing) ─────────────────────────────────────────────────
+
+/**
+ * Crea o reutiliza un Stripe Customer para el traductor.
+ */
+export async function getOrCreateCustomer(
+  email: string,
+  name: string,
+  existingCustomerId?: string | null
+): Promise<string> {
+  if (existingCustomerId) {
+    return existingCustomerId;
+  }
+
+  const customer = await stripe.customers.create({
+    email,
+    name,
+    metadata: { platform: "mitraductorjurado" },
+  });
+
+  return customer.id;
+}
+
+/**
+ * Crea una suscripción al plan fundador.
+ * Devuelve clientSecret para Stripe Elements (si requiere pago inmediato)
+ * o la suscripción activa si el pago ya se procesó.
+ */
+export async function createSubscription(opts: {
+  customerId: string;
+  priceId: string;
+}): Promise<{
+  subscriptionId: string;
+  clientSecret: string | null;
+  status: string;
+}> {
+  const subscription = await stripe.subscriptions.create({
+    customer: opts.customerId,
+    items: [{ price: opts.priceId }],
+    payment_behavior: "default_incomplete",
+    payment_settings: {
+      save_default_payment_method: "on_subscription",
+    },
+    expand: ["latest_invoice.payment_intent"],
+    metadata: { platform: "mitraductorjurado" },
+  });
+
+  const invoice = subscription.latest_invoice as Stripe.Invoice;
+  const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent | null;
+
+  return {
+    subscriptionId: subscription.id,
+    clientSecret: paymentIntent?.client_secret || null,
+    status: subscription.status,
+  };
+}
+
+/**
+ * Cancela la suscripción al final del período actual.
+ */
+export async function cancelSubscription(
+  subscriptionId: string
+): Promise<{ status: string; cancelAt: Date | null }> {
+  const subscription = await stripe.subscriptions.update(subscriptionId, {
+    cancel_at_period_end: true,
+  });
+
+  return {
+    status: subscription.status,
+    cancelAt: subscription.cancel_at
+      ? new Date(subscription.cancel_at * 1000)
+      : null,
+  };
+}
+
+/**
+ * Genera un enlace al Customer Portal de Stripe para autoservicio.
+ */
+export async function getCustomerPortalLink(
+  customerId: string
+): Promise<string> {
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    configuration: process.env.STRIPE_PORTAL_CONFIGURATION_ID || undefined,
+    return_url: `${process.env.NEXTAUTH_URL}/dashboard/translator/payments`,
+  });
+  return session.url;
+}
+
 export { PLATFORM_FEE_PERCENT };

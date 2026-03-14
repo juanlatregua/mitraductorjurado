@@ -9,6 +9,7 @@ import {
   sendQuoteNotification,
   sendOrderAcceptedNotification,
   sendDeliveryNotification,
+  sendOrderClosedNotification,
 } from "@/lib/email";
 
 interface Params {
@@ -153,6 +154,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
     );
   } else if (data.status === "delivered") {
     sendDeliveryNotification(
+      order.client.email!,
+      order.client.name || "Cliente",
+      order.id,
+      order.translator.name || "Traductor"
+    );
+  } else if (data.status === "closed") {
+    sendOrderClosedNotification(
       order.client.email!,
       order.client.name || "Cliente",
       order.id,

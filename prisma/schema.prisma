@@ -122,6 +122,19 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ─── REGISTRO MAEC (validación interna) ──────────────────────────────────────
+
+model MAECRegistry {
+  id        String   @id @default(cuid())
+  tij       String   @unique  // número MAEC ej: "3850"
+  nombre    String             // apellidos y nombre tal como aparece en el PDF
+  idiomas   String[]           // ["FRANCÉS", "INGLÉS"]
+  provincia String             // "MÁLAGA"
+  pais      String             // "ESPAÑA" o país de residencia
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 // ─── PERFIL TRADUCTOR ─────────────────────────────────────────────────────────
 
 model TranslatorProfile {
@@ -130,6 +143,7 @@ model TranslatorProfile {
   userId          String   @unique
   maecNumber      String   // ej: N.3850
   verified        Boolean  @default(false)
+  maecVerified    Boolean  @default(false) // true si validado contra MAECRegistry
   bio             String?  @db.Text
   province        String?
   photoUrl        String?
@@ -137,8 +151,9 @@ model TranslatorProfile {
   rateMinimum     Float?   // tarifa mínima €
   avgRating       Float    @default(0)
   reviewCount     Int      @default(0)
-  stripeAccountId String?  // Stripe Connect Express
-  stripeOnboarded Boolean  @default(false)
+  stripeAccountId  String?  // Stripe Connect Express (recibir pagos)
+  stripeOnboarded  Boolean  @default(false)
+  stripeCustomerId String?  // Stripe Customer (pagar suscripción)
   availabilityStatus AvailabilityStatus @default(available)
   widgetDomain    String?  // dominio autorizado para el widget
   widgetConfig    Json?    // colores, campos visibles, etc.
@@ -216,6 +231,25 @@ model DocumentTemplate {
   @@unique([category, type, language])
   @@index([tenantId])
   @@index([category, language])
+}
+
+// ─── SUSCRIPCIONES ──────────────────────────────────────────────────────────
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  tenantId             String    @default("default")
+  translatorId         String    @unique
+  stripeSubscriptionId String    @unique
+  stripeCustomerId     String
+  priceId              String    // STRIPE_PRICE_ID_MONTHLY
+  status               String    // active | past_due | canceled | incomplete
+  currentPeriodEnd     DateTime
+  cancelledAt          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
 }
 
 // ─── PEDIDOS ──────────────────────────────────────────────────────────────────

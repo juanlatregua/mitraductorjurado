@@ -18,7 +18,7 @@ app/
   translators/                          → Directorio público con filtros + perfil SEO
   api/auth/                             → NextAuth handler + onboarding
   api/orders/                           → CRUD pedidos + assign colega
-  api/stripe/                           → Connect onboarding + checkout
+  api/stripe/                           → Connect onboarding + checkout + subscription + portal
   api/invoices/                         → GET/POST factura por pedido
   api/signatures/                       → Firma eIDAS Signaturit
   api/documents/                        → Editor bilingüe + DeepL
@@ -33,16 +33,20 @@ lib/
   auth.ts        → NextAuth config (email + Google, JWT + role + onboarded)
   prisma.ts      → Prisma client singleton + RLS tenant middleware
   session.ts     → getSession() / getCurrentUser() helpers
-  stripe.ts      → Stripe Connect Express + PaymentIntent split
+  stripe.ts      → Stripe Connect Express + Billing subscriptions + PaymentIntent split
   verifactu.ts   → XML Verifactu AEAT + IVA
   signaturit.ts  → eIDAS firma electrónica
   deepl.ts       → DeepL batch translation
+  email.ts       → 8 notificaciones transaccionales (Azure Graph API)
+  azure-mail.ts  → Microsoft Graph OAuth2 mail sender
+  maec-validator.ts → Validación TIJ contra MAECRegistry
   order-status.ts → Status machine + role transitions
   constants.ts   → LANG_NAMES, CATEGORIES, PROVINCES
   invoice-number.ts → Numeración secuencial MTJ-YYYYMM-XXXX
 prisma/
-  schema.prisma  → 16 modelos, TODOS con tenantId
+  schema.prisma  → 18 modelos (+ MAECRegistry, Subscription), TODOS con tenantId
   rls-setup.sql  → Row-Level Security para 13 tablas
+  seed-maec.ts   → Parser PDF MAEC → 10.624 traductores en MAECRegistry
 public/
   widget.js      → Script embebible ES5 para webs externas
 ```
@@ -73,13 +77,14 @@ npm run db:rls                           # aplicar RLS tras primera migración
 - No abrir marketplace público sin gate: 50 subs + MRR ≥ 2.000€
 - No modificar `app/api/auth/` ni `prisma/migrations/` sin leer el CLAUDE.md local
 
-## Estado actual (36 páginas + sitemap + robots, 13 sprints)
+## Estado actual (45 rutas en producción, 14 sprints)
 - S0 Scaffold ✅ · S1 Auth ✅ · S2 Perfil ✅ · S3 Directorio ✅ · S4 Pedidos ✅
 - S5 Editor+DeepL ✅ · S6 eIDAS ✅ · S7 Colegas ✅ · S8 Verifactu ✅
-- S9 Widget ✅ · S10 Stripe ✅ · S11 Plantillas ✅ · S12 Email ✅ · S13 Landing+SEO ✅
-- Core funcional COMPLETO. Listo para configurar env vars y desplegar.
+- S9 Widget ✅ · S10 Stripe Connect ✅ · S11 Plantillas ✅ · S12 Email ✅ · S13 Landing+SEO ✅
+- S14 MAEC Registry ✅ · Stripe Billing ✅ · Email Transaccional ✅
+- Core funcional 100%. Desplegado en Vercel + Neon. Listo para captar suscriptores.
 
 ## Stack
 Next.js 14 App Router · TypeScript · Prisma · Neon (PostgreSQL + RLS)
 NextAuth JWT (translator|client|admin) · Tailwind CSS · Vercel
-Stripe Connect · DeepL · Signaturit/eIDAS · Verifactu · Vercel Blob · Nodemailer (Outlook SMTP)
+Stripe Connect + Billing · DeepL · Signaturit/eIDAS · Verifactu · Vercel Blob · Azure Graph API (email)

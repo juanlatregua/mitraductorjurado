@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPaymentIntent, isStripeConfigured } from "@/lib/stripe";
+import { calculateVAT } from "@/lib/verifactu";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
@@ -87,19 +88,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Cobrar el total con IVA (order.price es base imponible)
+  const { totalAmount } = calculateVAT(order.price);
+
   const pi = await createPaymentIntent({
-    amount: order.price,
+    amount: totalAmount,
     translatorStripeAccountId: stripeAccountId,
     orderId: order.id,
     customerEmail: session.user.email!,
   });
 
-  // Crear Payment en estado pending
+  // Crear Payment en estado pending (amount = total cobrado con IVA)
   await prisma.payment.create({
     data: {
       orderId: order.id,
       stripePaymentIntentId: pi.paymentIntentId,
-      amount: order.price,
+      amount: totalAmount,
       platformFee: pi.platformFee,
       translatorAmount: pi.translatorAmount,
       status: "pending",
@@ -109,7 +113,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     clientSecret: pi.clientSecret,
     paymentIntentId: pi.paymentIntentId,
-    amount: order.price,
+    amount: totalAmount,
     platformFee: pi.platformFee,
     translatorAmount: pi.translatorAmount,
   });

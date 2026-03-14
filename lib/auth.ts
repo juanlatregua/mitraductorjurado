@@ -17,7 +17,7 @@ function AzureEmailProvider(): EmailConfig {
     name: "Email",
     server: "", // Not used — we send via Azure Graph API
     from: process.env.EMAIL_FROM || "Mi Traductor Jurado <noreply@mitraductorjurado.es>",
-    maxAge: 10 * 60, // 10 minutes
+    maxAge: 30 * 60, // 30 minutes
     async sendVerificationRequest({ identifier: email, url }) {
       const brandUrl = process.env.NEXTAUTH_URL || "https://mitraductorjurado.es";
       await sendMail({
@@ -41,7 +41,7 @@ function AzureEmailProvider(): EmailConfig {
             </p>
             <p style="color:#64748b;font-size:13px;line-height:1.4;">
               Si no solicitaste este enlace, puedes ignorar este email.
-              El enlace caduca en 10 minutos.
+              El enlace caduca en 30 minutos.
             </p>
             <hr style="margin:24px 0 12px;border:0;border-top:1px solid #e2e8f0;" />
             <p style="color:#94a3b8;font-size:12px;">

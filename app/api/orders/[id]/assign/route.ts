@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendColleagueAssignmentNotification } from "@/lib/email";
 import { z } from "zod";
 
 interface Params {
@@ -80,6 +81,24 @@ export async function POST(req: NextRequest, { params }: Params) {
       brokerMargin,
     },
   });
+
+  // Enviar email al colega asignado
+  const principal = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true },
+  });
+
+  if (colleague.email) {
+    sendColleagueAssignmentNotification(
+      colleague.email,
+      colleague.name || "Colega",
+      params.id,
+      principal?.name || "Traductor",
+      order.sourceLang,
+      order.targetLang,
+      agreedPrice
+    );
+  }
 
   return NextResponse.json({ ok: true, assignment }, { status: 201 });
 }

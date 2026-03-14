@@ -1,0 +1,103 @@
+import { describe, it, expect } from "vitest";
+import { countWords } from "../word-count";
+
+// ─── Acta de nacimiento brasileña de Gecina Melanie ─────────────────────────
+// Certidão de Inteiro Teor de Nascimento — Cartório Maciel, Fortim-CE
+// Solo página 1 (acta). 433 palabras según Microsoft Word.
+// Estructura: cabecera + datos + narración notarial + averbações + emolumentos.
+const ACTA_GECINA_MELANIE = `REPÚBLICA FEDERATIVA DO BRASIL
+ESTADO DO CEARÁ
+REGISTRO CIVIL DAS PESSOAS NATURAIS
+DISTRITO DE FORTIM — COMARCA DE ARACATI
+Certidão de Inteiro Teor de Nascimento
+
+NOME: GECINA MELANIE FERREIRA DOS SANTOS
+CPF: 012.345.678-90
+MATRÍCULA: 019570 01 55 1995 1 00041 113 0011890 39
+
+Certifico que às fls. 87 do Livro A-023 deste Registro consta o assento de nascimento de número 1.890 com o seguinte teor: Aos vinte e cinco dias do mês de dezembro do ano de mil novecentos e noventa e quatro, neste Cartório do Registro Civil das Pessoas Naturais do Distrito de Fortim, Comarca de Aracati, Estado do Ceará, perante mim Oficial e as testemunhas ao final nomeadas e assinadas, compareceu MARCOS ANTÔNIO FERREIRA DOS SANTOS, brasileiro, natural de Fortaleza, Estado do Ceará, comerciante, portador da cédula de identidade RG nº 94.005.423-7 SSP/CE e inscrito no CPF sob o nº 019.345.676-01, casado com CLAUDIA REGINA OLIVEIRA FERREIRA, residente e domiciliado nesta localidade, e declarou que do seu legítimo matrimônio com CLAUDIA REGINA OLIVEIRA FERREIRA, brasileira, natural de Aracati, Estado do Ceará, nascida aos vinte de setembro de mil novecentos e setenta e dois, professora, portadora da cédula de identidade RG nº 2005.009.871-0 SSP/CE e inscrita no CPF sob o nº 032.456.789-12, nasceu nesta localidade às quatorze horas e trinta minutos do dia vinte e cinco de dezembro de mil novecentos e noventa e quatro uma criança do sexo feminino a quem deu o nome de GECINA MELANIE FERREIRA DOS SANTOS. Avós paternos: JOSÉ CARLOS FERREIRA DOS SANTOS e MARIA APARECIDA SOUZA FERREIRA, brasileiros, naturais de Fortaleza, Estado do Ceará. Avós maternos: ANTÔNIO CARLOS DE OLIVEIRA e HELENA MARIA COSTA OLIVEIRA, brasileiros, naturais de Aracati, Estado do Ceará. Testemunharam o presente ato FRANCISCO SOUSA LIMA, portador do RG nº 2001.007.045-2 SSP/CE, e ANA PAULA RODRIGUES MOTA, portadora do RG nº 2003.012.338-9 SSP/CE, ambos maiores, capazes, residentes e domiciliados nesta localidade. Nada mais foi declarado nem me foi requerido. Lido e achado conforme vai devidamente assinado. Eu, MARIA JOSÉ DA SILVA SOUZA, Escrevente compromissada que o digitei, conferi e o lavrei. O Oficial, ROBERTO MACIEL DE SOUZA.
+
+Notas, Averbações e Retificações:
+
+Averbação de CPF: Incluso o número de CPF 012.345.678-90 no presente assento nos termos do Provimento nº 63/2017 do Conselho Nacional de Justiça. Fortim, quinze de março de dois mil e vinte. Eu, ARIANE FERNANDES DE ALMEIDA, Substituta do Oficial, procedi à presente averbação e subscrevo.
+
+Sem ônus — Justiça Gratuita — Lei nº 9.534/97.
+O referido é verdade e dou fé.
+Fortim-CE, dez de janeiro de dois mil e vinte e quatro.
+
+ARIANE FERNANDES DE ALMEIDA
+Substituta do Oficial do Registro Civil
+Cartório Maciel — 1º Tabelionato de Notas — Fortim-CE
+
+EMOLUMENTO R$ 65,48 FERMOJU R$ 3,28 FAADEP R$ 1,32 FRMP R$ 0,66 ISS R$ 3,28 IBS R$ 0,00 CBS R$ 0,00 SELO IA 23CE02841521`;
+
+describe("countWords", () => {
+  it("returns 0 for empty text", () => {
+    expect(countWords("")).toBe(0);
+    expect(countWords("   ")).toBe(0);
+    expect(countWords("\n\n")).toBe(0);
+  });
+
+  it("counts simple sentences", () => {
+    expect(countWords("Hola mundo")).toBe(2);
+    expect(countWords("Certifico que es verdad")).toBe(4);
+  });
+
+  it("counts headers and titles as words", () => {
+    expect(countWords("CERTIDÃO DE NASCIMENTO")).toBe(3);
+    expect(countWords("REPÚBLICA FEDERATIVA DO BRASIL")).toBe(4);
+  });
+
+  it("counts proper names as words", () => {
+    expect(countWords("GECINA MELANIE FERREIRA DOS SANTOS")).toBe(5);
+  });
+
+  it("counts alphanumeric codes as words (contain letters)", () => {
+    expect(countWords("MG-5.234.891")).toBe(1);
+    expect(countWords("A-023")).toBe(1);
+    expect(countWords("1ª Circunscrição")).toBe(2);
+    expect(countWords("2º Ofício")).toBe(2);
+    expect(countWords("23CE02841521")).toBe(1);
+    // Currency symbol R$ has letter R — counted like Word does
+    expect(countWords("R$")).toBe(1);
+  });
+
+  it("excludes pure numeric tokens (no letters)", () => {
+    expect(countWords("019570 01 55 1995 1 00041 113 0011890 39")).toBe(0);
+    expect(countWords("012.345.678-90")).toBe(0);
+    expect(countWords("65,48")).toBe(0);
+    expect(countWords("3,28")).toBe(0);
+    expect(countWords("0,00")).toBe(0);
+  });
+
+  it("keeps words adjacent to excluded numbers", () => {
+    expect(countWords("MATRÍCULA: 019570 01 55 1995")).toBe(1);
+    expect(countWords("nº 41.113")).toBe(1);
+    expect(countWords("CPF nº 012.345.678-90")).toBe(2);
+    // R$ is counted (letter R), amount is excluded
+    expect(countWords("R$ 65,48")).toBe(1);
+  });
+
+  it("excludes standalone punctuation and decorators", () => {
+    expect(countWords("— AVERBAÇÕES —")).toBe(1);
+    expect(countWords("──────────────")).toBe(0);
+  });
+
+  it("counts signature formulas as words", () => {
+    expect(countWords("O referido é verdade e dou fé.")).toBe(7);
+  });
+
+  it("counts emolument labels and R$ as words, amounts excluded", () => {
+    // EMOLUMENTO, R$, FERMOJU, R$ are words; 65,48 and 3,28 are excluded
+    const line = "EMOLUMENTO R$ 65,48 FERMOJU R$ 3,28";
+    expect(countWords(line)).toBe(4);
+  });
+
+  it("counts acta brasileña de Gecina Melanie between 420-440 words", () => {
+    const count = countWords(ACTA_GECINA_MELANIE);
+    // Word count: ~433 (Microsoft Word). Our counter excludes pure numeric
+    // tokens (matrícula digits, CPF, currency amounts) → expect 420-440.
+    expect(count).toBeGreaterThanOrEqual(420);
+    expect(count).toBeLessThanOrEqual(440);
+  });
+});

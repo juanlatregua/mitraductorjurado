@@ -138,6 +138,49 @@ export async function sendDeliveryNotification(
   );
 }
 
+export async function sendOrderClosedNotification(
+  clientEmail: string,
+  clientName: string,
+  orderId: string,
+  translatorName: string
+) {
+  const url = `${BASE_URL}/dashboard/client/orders/${orderId}`;
+  await send(
+    clientEmail,
+    `Pedido completado — ${translatorName}`,
+    wrapHtml(
+      "Pedido completado",
+      `<p style="color:#475569;font-size:14px">Hola ${clientName},</p>
+       <p style="color:#475569;font-size:14px">Tu pedido de traducción jurada con <strong>${translatorName}</strong> ha sido cerrado correctamente.</p>
+       <p style="color:#475569;font-size:14px">Puedes descargar la traducción firmada desde tu panel.</p>
+       ${btn("Ver pedido", url)}`
+    )
+  );
+}
+
+export async function sendColleagueAssignmentNotification(
+  colleagueEmail: string,
+  colleagueName: string,
+  orderId: string,
+  principalName: string,
+  sourceLang: string,
+  targetLang: string,
+  agreedPrice: number
+) {
+  const url = `${BASE_URL}/dashboard/translator/orders/${orderId}`;
+  await send(
+    colleagueEmail,
+    `${principalName} te ha asignado un pedido`,
+    wrapHtml(
+      "Nuevo pedido asignado",
+      `<p style="color:#475569;font-size:14px">Hola ${colleagueName},</p>
+       <p style="color:#475569;font-size:14px"><strong>${principalName}</strong> te ha asignado un pedido de traducción jurada (${sourceLang.toUpperCase()} → ${targetLang.toUpperCase()}) por <strong>${agreedPrice.toFixed(2)} €</strong>.</p>
+       <p style="color:#475569;font-size:14px">Revisa los detalles y acepta el encargo.</p>
+       ${btn("Ver pedido", url)}`
+    )
+  );
+}
+
 export async function sendWidgetLeadNotification(
   translatorEmail: string,
   translatorName: string,

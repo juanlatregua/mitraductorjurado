@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { StatusBadge } from "@/components/orders/status-badge";
 import { LANG_NAMES } from "@/lib/constants";
 import Link from "next/link";
+import { calculateVAT } from "@/lib/verifactu";
 import type { OrderStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -107,7 +108,7 @@ export default async function TranslatorOrdersPage() {
                     <StatusBadge status={order.status as OrderStatus} />
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-navy-900">
-                    {order.price ? `${order.price.toFixed(2)} €` : "—"}
+                    {order.price ? `${calculateVAT(order.price).totalAmount.toFixed(2)} €` : "—"}
                   </td>
                   <td className="px-6 py-4 text-sm text-navy-500">
                     {new Date(order.createdAt).toLocaleDateString("es-ES")}

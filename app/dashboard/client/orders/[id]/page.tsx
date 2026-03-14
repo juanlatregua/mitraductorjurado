@@ -7,6 +7,7 @@ import { OrderActions } from "@/components/orders/order-actions";
 import { SignaturePanel } from "@/components/orders/signature-panel";
 import { InvoicePanel } from "@/components/orders/invoice-panel";
 import { PaymentPanel } from "@/components/orders/payment-panel";
+import { calculateVAT } from "@/lib/verifactu";
 import type { OrderStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -97,14 +98,25 @@ export default async function ClientOrderDetailPage({ params }: Props) {
               {order.documentType || "No especificado"}
             </dd>
           </div>
-          {order.price && (
-            <div>
-              <dt className="text-navy-500">Precio presupuestado</dt>
-              <dd className="font-bold text-navy-900 text-lg">
-                {order.price.toFixed(2)} €
-              </dd>
-            </div>
-          )}
+          {order.price && (() => {
+            const vat = calculateVAT(order.price);
+            return (
+              <>
+                <div>
+                  <dt className="text-navy-500">Base imponible</dt>
+                  <dd className="font-medium text-navy-900">{order.price.toFixed(2)} €</dd>
+                </div>
+                <div>
+                  <dt className="text-navy-500">IVA (21%)</dt>
+                  <dd className="font-medium text-navy-900">{vat.vatAmount.toFixed(2)} €</dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-navy-500">Total presupuestado</dt>
+                  <dd className="font-bold text-navy-900 text-lg">{vat.totalAmount.toFixed(2)} €</dd>
+                </div>
+              </>
+            );
+          })()}
           {order.expiresAt && (
             <div>
               <dt className="text-navy-500">Presupuesto válido hasta</dt>

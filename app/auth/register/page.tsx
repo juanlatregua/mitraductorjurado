@@ -26,6 +26,13 @@ export default function RegisterPage() {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-navy-100 p-8">
+      {/* Step indicator */}
+      <div className="flex items-center justify-center gap-2 mb-6">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium bg-accent-500 text-white">1</div>
+        <div className="w-8 h-0.5 bg-navy-100" />
+        <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium bg-navy-100 text-navy-400">2</div>
+      </div>
+
       <h2 className="text-2xl font-bold text-navy-900 mb-6">Crear cuenta</h2>
 
       {sent ? (

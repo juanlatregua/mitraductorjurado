@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { validateMAEC } from "@/lib/maec-validator";
 import { z } from "zod";
 
 const translatorSchema = z.object({
   role: z.literal("translator"),
   name: z.string().min(2),
-  maecNumber: z.string().min(3), // ej: N.3850
+  maecNumber: z.string().regex(/^N\.\d{1,5}$/, "Formato: N.1234"),
   province: z.string().min(2),
   languagePairs: z
     .array(
@@ -47,18 +48,31 @@ export async function POST(req: NextRequest) {
 
     const data = parsed.data;
 
+    // Validar número MAEC contra el registro oficial
+    const maecResult = await validateMAEC(data.maecNumber);
+    if (!maecResult.valid) {
+      return NextResponse.json(
+        {
+          error:
+            "Número MAEC no encontrado en el registro oficial. Comprueba que el número es correcto.",
+        },
+        { status: 400 }
+      );
+    }
+
     await prisma.$transaction([
       // Actualizar role y nombre del usuario
       prisma.user.update({
         where: { id: session.user.id },
         data: { role: "translator", name: data.name },
       }),
-      // Crear perfil de traductor
+      // Crear perfil de traductor — maecVerified automático
       prisma.translatorProfile.create({
         data: {
           userId: session.user.id,
           maecNumber: data.maecNumber,
           province: data.province,
+          maecVerified: true,
           languagePairs: {
             create: data.languagePairs.map((lp) => ({
               sourceLang: lp.sourceLang,

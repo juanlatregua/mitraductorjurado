@@ -1,14 +1,37 @@
 import type { Metadata } from "next";
+import { Playfair_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-playfair",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  variable: "--font-dm-sans",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-jetbrains",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: {
-    default: "mitraductorjurado.es — Plataforma para Traductores Jurados",
+    default: "mitraductorjurado.es — La plataforma de los traductores jurados de España",
     template: "%s | mitraductorjurado.es",
   },
   description:
-    "El sistema operativo del traductor jurado. Gestiona pedidos, traduce con editor bilingüe, firma con eIDAS, factura con Verifactu y cobra con Stripe.",
+    "La plataforma de los traductores jurados de España. Editor bilingüe, firma eIDAS, facturación Verifactu y cobros con Stripe. Todo integrado por 49€/mes.",
   keywords: [
     "traductor jurado",
     "traducción jurada",
@@ -25,9 +48,9 @@ export const metadata: Metadata = {
     locale: "es_ES",
     url: "https://mitraductorjurado.es",
     siteName: "mitraductorjurado.es",
-    title: "mitraductorjurado.es — Plataforma para Traductores Jurados",
+    title: "mitraductorjurado.es — La plataforma de los traductores jurados de España",
     description:
-      "El sistema operativo del traductor jurado. Todo integrado: pedidos, editor, firma eIDAS, Verifactu y pagos.",
+      "La plataforma de los traductores jurados de España. Editor bilingüe, firma eIDAS, facturación Verifactu y cobros con Stripe. Todo integrado por 49€/mes.",
   },
   robots: {
     index: true,
@@ -42,7 +65,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html
+      lang="es"
+      className={`${playfair.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+    >
       <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
