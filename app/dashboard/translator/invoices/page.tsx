@@ -31,9 +31,9 @@ export default async function TranslatorInvoicesPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const totalBilled = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-  const totalBase = invoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalVat = invoices.reduce((sum, inv) => sum + inv.vatAmount, 0);
+  const totalBilled = invoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+  const totalBase = invoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
+  const totalVat = invoices.reduce((sum, inv) => sum + Number(inv.vatAmount), 0);
 
   return (
     <div className="max-w-4xl">

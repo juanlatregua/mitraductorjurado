@@ -94,12 +94,12 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
             </dd>
           </div>
           {order.price && (() => {
-            const vat = calculateVAT(order.price);
+            const vat = calculateVAT(Number(order.price));
             return (
               <>
                 <div>
                   <dt className="text-navy-500">Base imponible</dt>
-                  <dd className="font-medium text-navy-900">{order.price.toFixed(2)} €</dd>
+                  <dd className="font-medium text-navy-900">{Number(order.price).toFixed(2)} €</dd>
                 </div>
                 <div>
                   <dt className="text-navy-500">IVA (21%)</dt>
@@ -145,11 +145,11 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
             </div>
             <div>
               <dt className="text-navy-500">Precio acordado</dt>
-              <dd className="font-medium text-navy-900">{order.assignment.agreedPrice.toFixed(2)} €</dd>
+              <dd className="font-medium text-navy-900">{Number(order.assignment.agreedPrice).toFixed(2)} €</dd>
             </div>
             <div>
               <dt className="text-navy-500">Tu margen</dt>
-              <dd className="font-medium text-green-600">{order.assignment.brokerMargin.toFixed(2)} €</dd>
+              <dd className="font-medium text-green-600">{Number(order.assignment.brokerMargin).toFixed(2)} €</dd>
             </div>
             {order.assignment.acceptedAt && (
               <div>
@@ -168,7 +168,7 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
               orderId={order.id}
               sourceLang={order.sourceLang}
               targetLang={order.targetLang}
-              orderPrice={order.price}
+              orderPrice={order.price ? Number(order.price) : null}
             />
           </div>
         )
@@ -196,7 +196,7 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
           orderId={order.id}
           role="translator"
           orderStatus={order.status}
-          price={order.price}
+          price={order.price ? Number(order.price) : null}
         />
       </div>
 
@@ -223,7 +223,7 @@ export default async function TranslatorOrderDetailPage({ params }: Props) {
         orderId={order.id}
         status={order.status as OrderStatus}
         role="translator"
-        price={order.price}
+        price={order.price ? Number(order.price) : null}
       />
     </div>
   );

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateMAEC } from "@/lib/maec-validator";
+import { sendWelcomeDay0 } from "@/lib/email";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const translatorSchema = z.object({
@@ -33,6 +35,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+
+  const rateLimited = await checkRateLimit("onboarding", session.user.id);
+  if (rateLimited) return rateLimited;
 
   const body = await req.json();
 
@@ -92,6 +97,9 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
+    // Send welcome email (fire-and-forget)
+    sendWelcomeDay0(session.user.email!, data.name, "translator").catch(() => {});
+
     return NextResponse.json({ ok: true, redirect: "/dashboard/translator" });
   }
 
@@ -111,6 +119,9 @@ export async function POST(req: NextRequest) {
       where: { id: session.user.id },
       data: { role: "client", name: data.name },
     });
+
+    // Send welcome email (fire-and-forget)
+    sendWelcomeDay0(session.user.email!, data.name, "client").catch(() => {});
 
     return NextResponse.json({ ok: true, redirect: "/dashboard/client" });
   }

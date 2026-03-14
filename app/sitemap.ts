@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { generateTranslatorSlug } from "@/lib/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +38,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { prisma } = await import("@/lib/prisma");
     const translators = await prisma.translatorProfile.findMany({
       where: { verified: true },
-      select: { userId: true, updatedAt: true },
+      select: {
+        maecNumber: true,
+        updatedAt: true,
+        user: { select: { name: true } },
+      },
     });
 
     const translatorUrls = translators.map((t) => ({
-      url: `${baseUrl}/translators/${t.userId}`,
+      url: `${baseUrl}/translators/${generateTranslatorSlug(t.user.name || "traductor", t.maecNumber)}`,
       lastModified: t.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.7,

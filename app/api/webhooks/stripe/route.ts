@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
             order.client.email,
             order.client.name || "Cliente",
             orderId,
-            order.payment.amount
+            Number(order.payment.amount)
           );
         }
       }

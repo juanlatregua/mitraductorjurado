@@ -108,7 +108,7 @@ export default async function TranslatorOrdersPage() {
                     <StatusBadge status={order.status as OrderStatus} />
                   </td>
                   <td className="px-6 py-4 text-sm font-medium text-navy-900">
-                    {order.price ? `${calculateVAT(order.price).totalAmount.toFixed(2)} €` : "—"}
+                    {order.price ? `${calculateVAT(Number(order.price)).totalAmount.toFixed(2)} €` : "—"}
                   </td>
                   <td className="px-6 py-4 text-sm text-navy-500">
                     {new Date(order.createdAt).toLocaleDateString("es-ES")}

@@ -1,4 +1,5 @@
 import { TranslatorSidebar } from "@/components/dashboard/translator-sidebar";
+import { SubscriptionGate } from "@/components/dashboard/subscription-gate";
 import { Logo } from "@/components/logo";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -15,13 +16,29 @@ export default async function TranslatorDashboardLayout({
   let maecNumber = "";
   let initials = "TJ";
   let activeOrderCount = 0;
+  let hasActiveSubscription = false;
+
+  // Admins bypass subscription gate
+  if (session.user.role === "admin") {
+    hasActiveSubscription = true;
+  }
 
   try {
     const profile = await prisma.translatorProfile.findUnique({
       where: { userId: session.user.id },
-      select: { maecNumber: true },
+      select: { id: true, maecNumber: true },
     });
     if (profile?.maecNumber) maecNumber = profile.maecNumber;
+
+    if (profile && !hasActiveSubscription) {
+      const subscription = await prisma.subscription.findUnique({
+        where: { translatorId: profile.id },
+        select: { status: true, currentPeriodEnd: true },
+      });
+      hasActiveSubscription =
+        subscription?.status === "active" &&
+        subscription.currentPeriodEnd > new Date();
+    }
 
     activeOrderCount = await prisma.order.count({
       where: {
@@ -101,7 +118,9 @@ export default async function TranslatorDashboardLayout({
 
       {/* ─── Main ─── */}
       <main style={{ padding: 32, overflowY: "auto" }}>
-        {children}
+        <SubscriptionGate subscribed={hasActiveSubscription}>
+          {children}
+        </SubscriptionGate>
       </main>
     </div>
   );

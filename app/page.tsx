@@ -686,9 +686,9 @@ export default async function Home() {
               </p>
               <div className="space-y-2.5">
                 {[
-                  { label: "Aviso legal", href: "#" },
-                  { label: "Pol\u00edtica de privacidad", href: "#" },
-                  { label: "Condiciones de uso", href: "#" },
+                  { label: "Aviso legal", href: "/aviso-legal" },
+                  { label: "Pol\u00edtica de privacidad", href: "/privacidad" },
+                  { label: "Condiciones de uso", href: "/condiciones" },
                 ].map((link) => (
                   <Link
                     key={link.label}
@@ -727,7 +727,7 @@ export default async function Home() {
           {/* Divider + copyright */}
           <div className="pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <p className="font-sans font-light text-[10px]" style={{ color: "rgba(255,255,255,0.25)" }}>
-              &copy; {new Date().getFullYear()} HBTJ Consultores Lingüísticos S.L. &middot; CIF: B-XXXXXXXX
+              &copy; {new Date().getFullYear()} HBTJ Consultores Lingüísticos S.L. &middot; CIF: B-72578907
             </p>
           </div>
         </div>

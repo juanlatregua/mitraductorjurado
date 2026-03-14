@@ -101,7 +101,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const invoiceNumber = await generateInvoiceNumber();
-  const { vatRate, vatAmount, totalAmount } = calculateVAT(order.price);
+  const { vatRate, vatAmount, totalAmount } = calculateVAT(Number(order.price));
 
   // Generar XML Verifactu
   const xmlContent = generateVerifactuXML({
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     issuerNif: process.env.VERIFACTU_NIF || "PENDIENTE",
     issuerName: order.translator.name || "Traductor Jurado",
     recipientName: order.client.name || order.client.email,
-    amount: order.price,
+    amount: Number(order.price),
     vatRate,
     vatAmount,
     totalAmount,
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       recipientName: order.client.name || "Cliente",
       recipientEmail: order.client.email,
       concept,
-      amount: order.price,
+      amount: Number(order.price),
       vatRate,
       vatAmount,
       totalAmount,

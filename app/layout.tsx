@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Playfair_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -70,6 +71,12 @@ export default function RootLayout({
       className={`${playfair.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
     >
       <body className="antialiased">
+        <Script
+          defer
+          data-domain="mitraductorjurado.es"
+          src="https://plausible.io/js/script.js"
+          strategy="afterInteractive"
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

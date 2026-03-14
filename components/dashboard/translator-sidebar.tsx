@@ -121,6 +121,17 @@ const SECTIONS = [
         badge: false,
       },
       {
+        label: "Leads",
+        href: "/dashboard/translator/leads",
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 1L14 4V8C14 11.3 11.5 14.2 8 15C4.5 14.2 2 11.3 2 8V4L8 1Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+            <path d="M5.5 8L7 9.5L10.5 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        ),
+        badge: false,
+      },
+      {
         label: "Perfil p\u00fablico",
         href: "/dashboard/translator/profile",
         icon: (

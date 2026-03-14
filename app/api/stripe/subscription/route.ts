@@ -8,6 +8,7 @@ import {
   createSubscription,
   cancelSubscription,
 } from "@/lib/stripe";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 // GET — obtener estado de suscripción del traductor
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id || !session.user.email) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+
+  const rateLimited = await checkRateLimit("subscription", session.user.id);
+  if (rateLimited) return rateLimited;
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPaymentIntent, isStripeConfigured } from "@/lib/stripe";
 import { calculateVAT } from "@/lib/verifactu";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
@@ -16,6 +17,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
+
+  const rateLimited = await checkRateLimit("checkout", session.user.id);
+  if (rateLimited) return rateLimited;
 
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -89,7 +93,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Cobrar el total con IVA (order.price es base imponible)
-  const { totalAmount } = calculateVAT(order.price);
+  const { totalAmount } = calculateVAT(Number(order.price));
 
   const pi = await createPaymentIntent({
     amount: totalAmount,

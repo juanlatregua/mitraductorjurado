@@ -40,6 +40,24 @@ function tabStyle(active: boolean): React.CSSProperties {
   };
 }
 
+function panelToggleStyle(active: boolean): React.CSSProperties {
+  return {
+    flex: 1,
+    background: active ? "rgba(201,136,42,0.15)" : "transparent",
+    color: active ? "#C9882A" : "#6A9A7A",
+    border: "none",
+    fontSize: 11,
+    fontFamily: "var(--font-mono)",
+    fontWeight: active ? 600 : 400,
+    padding: "6px 0",
+    cursor: "pointer",
+    letterSpacing: 0.5,
+    textTransform: "uppercase" as const,
+    borderBottom: active ? "2px solid #C9882A" : "2px solid transparent",
+    transition: "all 0.15s ease",
+  };
+}
+
 /* ─── Component ─────────────────────────────────────────────────────────────── */
 
 export function BilingualEditor({
@@ -69,6 +87,17 @@ export function BilingualEditor({
   const [pdfPage, setPdfPage] = useState(1);
   const [pdfTotalPages, setPdfTotalPages] = useState(0);
   const [newText, setNewText] = useState("");
+  const [isNarrow, setIsNarrow] = useState(false);
+  const [mobilePanel, setMobilePanel] = useState<"pdf" | "editor">("editor");
+
+  /* — Responsive: detect < 1200px — */
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 1199px)");
+    setIsNarrow(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
 
   /* — Refs for auto-save — */
   const segmentsRef = useRef(segments);
@@ -228,7 +257,11 @@ export function BilingualEditor({
         const nextId = segments[idx + 1].id;
         setActiveSegmentId(nextId);
         setTimeout(() => {
-          document.getElementById(`seg-textarea-${nextId}`)?.focus();
+          const el = document.getElementById(`seg-textarea-${nextId}`);
+          if (el) {
+            el.focus();
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
         }, 50);
       }
     },
@@ -277,6 +310,9 @@ export function BilingualEditor({
       );
       return;
     }
+    if (!window.confirm(`\u00bfEntregar la traducci\u00f3n al cliente? Esta acci\u00f3n no se puede deshacer.\n\n${confirmedCount} segmentos confirmados, ${wordCount} palabras.`)) {
+      return;
+    }
     try {
       await save();
       const res = await fetch(`/api/orders/${orderId}`, {
@@ -293,7 +329,7 @@ export function BilingualEditor({
     } catch {
       setMessage("Error de conexi\u00f3n");
     }
-  }, [confirmedCount, totalCount, emptyCount, suggestionCount, orderId, save]);
+  }, [confirmedCount, totalCount, emptyCount, suggestionCount, wordCount, orderId, save]);
 
   /* Last-saved label */
   const lastSavedLabel = lastSaved
@@ -342,52 +378,59 @@ export function BilingualEditor({
           {clientName} &mdash; {documentType || "Documento"}
         </span>
 
-        {/* Lang badge */}
-        <span
-          className="font-mono"
-          style={{
-            fontSize: 9,
-            color: "#C9882A",
-            background: "rgba(201,136,42,0.12)",
-            padding: "2px 8px",
-            borderRadius: 3,
-          }}
-        >
-          {LANG_NAMES[sourceLang] || sourceLang} &rarr; {LANG_NAMES[targetLang] || targetLang}
-        </span>
+        {/* Lang badge — hidden on narrow */}
+        {!isNarrow && (
+          <span
+            className="font-mono"
+            style={{
+              fontSize: 9,
+              color: "#C9882A",
+              background: "rgba(201,136,42,0.12)",
+              padding: "2px 8px",
+              borderRadius: 3,
+            }}
+          >
+            {LANG_NAMES[sourceLang] || sourceLang} &rarr; {LANG_NAMES[targetLang] || targetLang}
+          </span>
+        )}
 
-        {/* Progress (centered) */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-          }}
-        >
+        {/* Progress (centered) — hidden on narrow, info still in statusbar */}
+        {!isNarrow && (
           <div
             style={{
-              width: 160,
-              height: 3,
-              background: "rgba(255,255,255,0.08)",
-              borderRadius: 2,
-              overflow: "hidden",
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
             }}
           >
             <div
               style={{
-                height: "100%",
-                width: `${progress}%`,
-                background: "#C9882A",
-                transition: "width 0.3s",
+                width: 160,
+                height: 3,
+                background: "rgba(255,255,255,0.08)",
+                borderRadius: 2,
+                overflow: "hidden",
               }}
-            />
+            >
+              <div
+                style={{
+                  height: "100%",
+                  width: `${progress}%`,
+                  background: "#C9882A",
+                  transition: "width 0.3s",
+                }}
+              />
+            </div>
+            <span className="font-mono" style={{ fontSize: 9, color: "#4A8A5A" }}>
+              {confirmedCount} / {totalCount} segmentos &middot; {Math.round(progress)}%
+            </span>
           </div>
-          <span className="font-mono" style={{ fontSize: 9, color: "#4A8A5A" }}>
-            {confirmedCount} / {totalCount} segmentos &middot; {Math.round(progress)}%
-          </span>
-        </div>
+        )}
+
+        {/* Spacer on narrow to push buttons right */}
+        {isNarrow && <div style={{ flex: 1 }} />}
 
         {/* Save ghost */}
         <button
@@ -427,111 +470,139 @@ export function BilingualEditor({
         </button>
       </div>
 
-      {/* ─── Panel Headers 32px ─── */}
-      <div
-        style={{
-          height: 32,
-          minHeight: 32,
-          background: "#112A1C",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-        }}
-      >
-        {/* Left header */}
+      {/* ─── Panel Headers ─── */}
+      {isNarrow ? (
+        /* ─── Narrow: single toggle bar ─── */
         <div
           style={{
+            height: 36,
+            minHeight: 36,
+            background: "#112A1C",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 16px",
+            alignItems: "stretch",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              className="font-mono"
-              style={{ fontSize: 9, color: "#3A6A4A", textTransform: "uppercase", letterSpacing: 1 }}
-            >
-              Documento original
-            </span>
-            {pdfTotalPages > 0 && (
-              <span className="font-mono" style={{ fontSize: 8, color: "#6A9A7A" }}>
-                PDF &middot; P&aacute;g. {pdfPage}/{pdfTotalPages}
+          <button
+            onClick={() => setMobilePanel("pdf")}
+            style={panelToggleStyle(mobilePanel === "pdf")}
+          >
+            PDF
+          </button>
+          <div style={{ width: 1, background: "rgba(255,255,255,0.08)" }} />
+          <button
+            onClick={() => setMobilePanel("editor")}
+            style={panelToggleStyle(mobilePanel === "editor")}
+          >
+            Traducci&oacute;n
+          </button>
+        </div>
+      ) : (
+        /* ─── Wide: two-column headers (32px) ─── */
+        <div
+          style={{
+            height: 32,
+            minHeight: 32,
+            background: "#112A1C",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+          }}
+        >
+          {/* Left header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0 16px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                className="font-mono"
+                style={{ fontSize: 9, color: "#3A6A4A", textTransform: "uppercase", letterSpacing: 1 }}
+              >
+                Documento original
               </span>
-            )}
+              {pdfTotalPages > 0 && (
+                <span className="font-mono" style={{ fontSize: 8, color: "#6A9A7A" }}>
+                  PDF &middot; P&aacute;g. {pdfPage}/{pdfTotalPages}
+                </span>
+              )}
+            </div>
+            <div style={{ display: "flex" }}>
+              <button onClick={() => setLeftView("pdf")} style={tabStyle(leftView === "pdf")}>
+                PDF
+              </button>
+              <button onClick={() => setLeftView("text")} style={tabStyle(leftView === "text")}>
+                Texto
+              </button>
+            </div>
           </div>
-          <div style={{ display: "flex" }}>
-            <button onClick={() => setLeftView("pdf")} style={tabStyle(leftView === "pdf")}>
-              PDF
-            </button>
-            <button onClick={() => setLeftView("text")} style={tabStyle(leftView === "text")}>
-              Texto
-            </button>
-          </div>
-        </div>
 
-        {/* Right header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 16px",
-            borderLeft: "0.5px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              className="font-mono"
-              style={{ fontSize: 9, color: "#3A6A4A", textTransform: "uppercase", letterSpacing: 1 }}
-            >
-              Traducci&oacute;n
-            </span>
-            <span
-              className="font-mono"
-              style={{
-                fontSize: 8,
-                color: "#C9882A",
-                background: "rgba(201,136,42,0.12)",
-                padding: "1px 6px",
-                borderRadius: 2,
-              }}
-            >
-              {LANG_NAMES[targetLang] || targetLang}
-            </span>
-            <button
-              onClick={translateWithDeepL}
-              disabled={translating || segments.length === 0}
-              className="font-mono"
-              style={{
-                fontSize: 8,
-                color: "#4A8A5A",
-                background: "rgba(74,138,90,0.12)",
-                border: "none",
-                padding: "1px 6px",
-                borderRadius: 2,
-                cursor: "pointer",
-                opacity: translating ? 0.5 : 1,
-              }}
-            >
-              {translating ? "Traduciendo..." : "DeepL"}
-            </button>
-          </div>
-          <div style={{ display: "flex" }}>
-            <button
-              onClick={() => setRightView("segments")}
-              style={tabStyle(rightView === "segments")}
-            >
-              Segmentos
-            </button>
-            <button
-              onClick={() => setRightView("preview")}
-              style={tabStyle(rightView === "preview")}
-            >
-              Preview
-            </button>
+          {/* Right header */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0 16px",
+              borderLeft: "0.5px solid rgba(255,255,255,0.05)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                className="font-mono"
+                style={{ fontSize: 9, color: "#3A6A4A", textTransform: "uppercase", letterSpacing: 1 }}
+              >
+                Traducci&oacute;n
+              </span>
+              <span
+                className="font-mono"
+                style={{
+                  fontSize: 8,
+                  color: "#C9882A",
+                  background: "rgba(201,136,42,0.12)",
+                  padding: "1px 6px",
+                  borderRadius: 2,
+                }}
+              >
+                {LANG_NAMES[targetLang] || targetLang}
+              </span>
+              <button
+                onClick={translateWithDeepL}
+                disabled={translating || segments.length === 0}
+                className="font-mono"
+                style={{
+                  fontSize: 8,
+                  color: "#4A8A5A",
+                  background: "rgba(74,138,90,0.12)",
+                  border: "none",
+                  padding: "1px 6px",
+                  borderRadius: 2,
+                  cursor: "pointer",
+                  opacity: translating ? 0.5 : 1,
+                }}
+              >
+                {translating ? "Traduciendo..." : "DeepL"}
+              </button>
+            </div>
+            <div style={{ display: "flex" }}>
+              <button
+                onClick={() => setRightView("segments")}
+                style={tabStyle(rightView === "segments")}
+              >
+                Segmentos
+              </button>
+              <button
+                onClick={() => setRightView("preview")}
+                style={tabStyle(rightView === "preview")}
+              >
+                Preview
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ─── Message bar ─── */}
       {message && (
@@ -550,8 +621,14 @@ export function BilingualEditor({
 
       {/* ─── Body ─── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left: PDF Panel */}
-        <div style={{ width: "50%", borderRight: "0.5px solid #E8E2D8" }}>
+        {/* Left: PDF Panel — hidden on narrow when editor tab is active */}
+        <div
+          style={{
+            width: isNarrow ? "100%" : "50%",
+            borderRight: isNarrow ? "none" : "0.5px solid #E8E2D8",
+            display: isNarrow && mobilePanel !== "pdf" ? "none" : "block",
+          }}
+        >
           <PdfPanel
             pdfUrl={originalFileUrl}
             viewMode={leftView}
@@ -564,17 +641,75 @@ export function BilingualEditor({
           />
         </div>
 
-        {/* Right: Segments / Preview */}
+        {/* Right: Segments / Preview — hidden on narrow when pdf tab is active */}
         <div
           style={{
-            width: "50%",
-            display: "flex",
+            width: isNarrow ? "100%" : "50%",
+            display: isNarrow && mobilePanel !== "editor" ? "none" : "flex",
             flexDirection: "column",
             overflow: "hidden",
           }}
         >
           {rightView === "segments" ? (
             <>
+              {/* DeepL button row — shown on narrow since the header is replaced by toggle */}
+              {isNarrow && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 16px",
+                    background: "#FAFAF5",
+                    borderBottom: "0.5px solid #E8E2D8",
+                  }}
+                >
+                  <span
+                    className="font-mono"
+                    style={{
+                      fontSize: 8,
+                      color: "#C9882A",
+                      background: "rgba(201,136,42,0.12)",
+                      padding: "1px 6px",
+                      borderRadius: 2,
+                    }}
+                  >
+                    {LANG_NAMES[targetLang] || targetLang}
+                  </span>
+                  <button
+                    onClick={translateWithDeepL}
+                    disabled={translating || segments.length === 0}
+                    className="font-mono"
+                    style={{
+                      fontSize: 8,
+                      color: "#4A8A5A",
+                      background: "rgba(74,138,90,0.12)",
+                      border: "none",
+                      padding: "1px 6px",
+                      borderRadius: 2,
+                      cursor: "pointer",
+                      opacity: translating ? 0.5 : 1,
+                    }}
+                  >
+                    {translating ? "Traduciendo..." : "DeepL"}
+                  </button>
+                  <div style={{ marginLeft: "auto", display: "flex" }}>
+                    <button
+                      onClick={() => setRightView("segments")}
+                      style={tabStyle(true)}
+                    >
+                      Segmentos
+                    </button>
+                    <button
+                      onClick={() => setRightView("preview")}
+                      style={tabStyle(false)}
+                    >
+                      Preview
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Segments */}
               <div style={{ flex: 1, overflowY: "auto" }}>
                 {segments.length === 0 ? (

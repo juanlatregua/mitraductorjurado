@@ -181,6 +181,107 @@ export async function sendColleagueAssignmentNotification(
   );
 }
 
+// ─── Secuencia de bienvenida (welcome emails) ──────────────────────────────
+
+export async function sendWelcomeDay0(
+  email: string,
+  name: string,
+  role: "translator" | "client"
+) {
+  if (role === "translator") {
+    const url = `${BASE_URL}/dashboard/translator`;
+    await send(
+      email,
+      "Bienvenido a mitraductorjurado.es",
+      wrapHtml(
+        "Bienvenido, " + name,
+        `<p style="color:#475569;font-size:14px">Tu cuenta de traductor jurado ya está activa. Aquí tienes los primeros pasos:</p>
+         <ol style="color:#475569;font-size:14px;line-height:1.8;padding-left:20px">
+           <li><strong>Completa tu perfil</strong> — Añade tu foto, biografía y tarifas para aparecer en el directorio.</li>
+           <li><strong>Configura Stripe Connect</strong> — Conecta tu cuenta bancaria para recibir pagos de clientes.</li>
+           <li><strong>Suscríbete al Plan Fundador</strong> — 49€/mes con acceso completo. Precio de lanzamiento para siempre.</li>
+         </ol>
+         ${btn("Ir a mi panel", url)}
+         <p style="color:#94a3b8;font-size:12px;margin-top:16px">¿Dudas? Responde a este email y te ayudamos.</p>`
+      )
+    );
+  } else {
+    const url = `${BASE_URL}/dashboard/client`;
+    await send(
+      email,
+      "Bienvenido a mitraductorjurado.es",
+      wrapHtml(
+        "Bienvenido, " + name,
+        `<p style="color:#475569;font-size:14px">Tu cuenta de cliente ya está lista. Puedes buscar un traductor jurado y solicitar un presupuesto directamente.</p>
+         ${btn("Buscar traductor jurado", BASE_URL + "/translators")}
+         <p style="color:#94a3b8;font-size:12px;margin-top:16px">¿Dudas? Responde a este email y te ayudamos.</p>`
+      )
+    );
+  }
+}
+
+export async function sendWelcomeDay3(email: string, name: string) {
+  const editorUrl = `${BASE_URL}/dashboard/translator`;
+  await send(
+    email,
+    "¿Has probado el editor bilingüe?",
+    wrapHtml(
+      "Tu editor bilingüe te espera",
+      `<p style="color:#475569;font-size:14px">Hola ${name},</p>
+       <p style="color:#475569;font-size:14px">El editor bilingüe de mitraductorjurado.es te permite:</p>
+       <ul style="color:#475569;font-size:14px;line-height:1.8;padding-left:20px">
+         <li>Traducir con el PDF original al lado</li>
+         <li>Sugerir traducciones automáticas con DeepL</li>
+         <li>Generar el documento final con fórmula de certificación</li>
+         <li>Firmar digitalmente con eIDAS</li>
+       </ul>
+       <p style="color:#475569;font-size:14px">Sustituye Adobe + DeepL + Word. Todo en una sola herramienta.</p>
+       ${btn("Probar el editor", editorUrl)}`
+    )
+  );
+}
+
+export async function sendWelcomeDay7(email: string, name: string) {
+  const subscribeUrl = `${BASE_URL}/dashboard/translator/payments`;
+  await send(
+    email,
+    "Oferta especial: Plan Fundador 49€/mes para siempre",
+    wrapHtml(
+      "No pierdas tu plaza de fundador",
+      `<p style="color:#475569;font-size:14px">Hola ${name},</p>
+       <p style="color:#475569;font-size:14px">Llevas una semana registrado pero aún no te has suscrito al Plan Fundador.</p>
+       <p style="color:#475569;font-size:14px"><strong>El precio de 49€/mes es exclusivo para los primeros suscriptores y se mantiene para siempre</strong>, aunque el precio suba en el futuro.</p>
+       <p style="color:#475569;font-size:14px">Incluye: editor bilingüe, DeepL, firma eIDAS, facturación Verifactu, cobros Stripe, red de colegas y widget para tu web.</p>
+       ${btn("Suscribirme ahora — 49€/mes", subscribeUrl)}
+       <p style="color:#94a3b8;font-size:12px;margin-top:16px">Las plazas de fundador son limitadas.</p>`
+    )
+  );
+}
+
+export async function sendAbandonedSignupEmail(email: string, name: string) {
+  const onboardingUrl = `${BASE_URL}/auth/onboarding?role=translator`;
+  await send(
+    email,
+    "Tu registro en MiTraductorJurado está incompleto",
+    wrapHtml(
+      "Completa tu registro, " + name,
+      `<p style="color:#475569;font-size:14px">Hola ${name},</p>
+       <p style="color:#475569;font-size:14px">Vemos que empezaste a registrarte en mitraductorjurado.es pero no completaste tu perfil de traductor jurado.</p>
+       <p style="color:#475569;font-size:14px">Solo necesitas unos minutos para terminar el proceso y acceder a todas las herramientas:</p>
+       <ul style="color:#475569;font-size:14px;line-height:1.8;padding-left:20px">
+         <li><strong>Editor bilingüe</strong> con DeepL integrado</li>
+         <li><strong>Firma digital eIDAS</strong> cualificada</li>
+         <li><strong>Facturación Verifactu</strong> automática</li>
+         <li><strong>Cobros Stripe</strong> directos de tus clientes</li>
+         <li><strong>Directorio público</strong> para captar nuevos encargos</li>
+       </ul>
+       <p style="color:#475569;font-size:14px">Retoma tu registro desde donde lo dejaste:</p>
+       ${btn("Completar mi registro", onboardingUrl)}
+       <p style="color:#94a3b8;font-size:12px;margin-top:16px">Si tienes cualquier duda, responde a este email y te ayudamos.</p>`
+    )
+  );
+}
+
 export async function sendWidgetLeadNotification(
   translatorEmail: string,
   translatorName: string,

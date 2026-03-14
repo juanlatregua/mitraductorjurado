@@ -99,12 +99,12 @@ export default async function ClientOrderDetailPage({ params }: Props) {
             </dd>
           </div>
           {order.price && (() => {
-            const vat = calculateVAT(order.price);
+            const vat = calculateVAT(Number(order.price));
             return (
               <>
                 <div>
                   <dt className="text-navy-500">Base imponible</dt>
-                  <dd className="font-medium text-navy-900">{order.price.toFixed(2)} €</dd>
+                  <dd className="font-medium text-navy-900">{Number(order.price).toFixed(2)} €</dd>
                 </div>
                 <div>
                   <dt className="text-navy-500">IVA (21%)</dt>
@@ -143,7 +143,7 @@ export default async function ClientOrderDetailPage({ params }: Props) {
           orderId={order.id}
           role="client"
           orderStatus={order.status}
-          price={order.price}
+          price={order.price ? Number(order.price) : null}
         />
       </div>
 
@@ -170,7 +170,7 @@ export default async function ClientOrderDetailPage({ params }: Props) {
         orderId={order.id}
         status={order.status as OrderStatus}
         role="client"
-        price={order.price}
+        price={order.price ? Number(order.price) : null}
       />
     </div>
   );

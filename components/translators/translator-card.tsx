@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LANG_NAMES, CATEGORY_NAMES } from "@/lib/constants";
+import { generateTranslatorSlug } from "@/lib/slug";
 
 interface TranslatorCardProps {
   id: string;
@@ -26,10 +27,11 @@ export function TranslatorCard({
   avgRating, reviewCount, availabilityStatus, languagePairs, specialties,
 }: TranslatorCardProps) {
   const availability = AVAILABILITY_LABELS[availabilityStatus] || AVAILABILITY_LABELS.available;
+  const slug = generateTranslatorSlug(name, maecNumber);
 
   return (
     <Link
-      href={`/translators/${id}`}
+      href={`/translators/${slug}`}
       className="block bg-white rounded-xl border border-navy-100 p-6 hover:border-accent-300 hover:shadow-md transition-all"
     >
       <div className="flex gap-4 items-start">

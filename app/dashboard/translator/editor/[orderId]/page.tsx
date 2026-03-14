@@ -61,7 +61,7 @@ export default async function EditorPage({ params }: Props) {
       targetLang={order.targetLang}
       documentType={order.documentType}
       originalFileUrl={order.originalFileUrl}
-      price={order.price}
+      price={order.price ? Number(order.price) : null}
       orderStatus={order.status}
       clientName={order.client?.name || "Cliente"}
       translatorName={session.user.name || "Traductor"}

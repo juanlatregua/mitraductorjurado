@@ -147,8 +147,8 @@ model TranslatorProfile {
   bio             String?  @db.Text
   province        String?
   photoUrl        String?
-  ratePerWord     Float?   // €/palabra
-  rateMinimum     Float?   // tarifa mínima €
+  ratePerWord     Decimal? @db.Decimal(10,4)  // €/palabra
+  rateMinimum     Decimal? @db.Decimal(10,2)  // tarifa mínima €
   avgRating       Float    @default(0)
   reviewCount     Int      @default(0)
   stripeAccountId  String?  // Stripe Connect Express (recibir pagos)
@@ -265,7 +265,7 @@ model Order {
   documentType   String?     // tipo reconocido automáticamente
   originalFileUrl String?    // PDF original (Vercel Blob)
   translatedFileUrl String?  // PDF final firmado
-  price          Float?      // precio acordado
+  price          Decimal?    @db.Decimal(10,2)  // precio acordado (base imponible)
   expiresAt      DateTime?   // expiración del presupuesto
   notes          String?     @db.Text
   translationData String?   @db.Text  // JSON: {segments, status} del editor
@@ -273,8 +273,8 @@ model Order {
   updatedAt      DateTime    @updatedAt
 
   // Relaciones
-  client     User              @relation("ClientOrders", fields: [clientId], references: [id])
-  translator User              @relation("TranslatorOrders", fields: [translatorId], references: [id])
+  client     User              @relation("ClientOrders", fields: [clientId], references: [id], onDelete: Cascade)
+  translator User              @relation("TranslatorOrders", fields: [translatorId], references: [id], onDelete: Cascade)
   assignment OrderAssignment?
   payment    Payment?
   invoice    Invoice?
@@ -292,13 +292,13 @@ model OrderAssignment {
   tenantId     String   @default("default")
   orderId      String   @unique
   assignedToId String   // colega que ejecuta la traducción
-  brokerMargin Float    // comisión en € de quien deriva
-  agreedPrice  Float    // precio pactado con el colega
+  brokerMargin Decimal  @db.Decimal(10,2)  // comisión en € de quien deriva
+  agreedPrice  Decimal  @db.Decimal(10,2)  // precio pactado con el colega
   acceptedAt   DateTime?
   createdAt    DateTime @default(now())
 
   order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  assignedTo User  @relation("AssignedTranslator", fields: [assignedToId], references: [id])
+  assignedTo User  @relation("AssignedTranslator", fields: [assignedToId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([assignedToId])
@@ -311,9 +311,9 @@ model Payment {
   tenantId              String   @default("default")
   orderId               String   @unique
   stripePaymentIntentId String   @unique
-  amount                Float    // total cobrado al cliente (€)
-  platformFee           Float    // comisión plataforma (€)
-  translatorAmount      Float    // lo que recibe el traductor (€)
+  amount                Decimal  @db.Decimal(10,2)  // total cobrado al cliente (€)
+  platformFee           Decimal  @db.Decimal(10,2)  // comisión plataforma (€)
+  translatorAmount      Decimal  @db.Decimal(10,2)  // lo que recibe el traductor (€)
   currency              String   @default("eur")
   status                String   // succeeded | pending | failed
   createdAt             DateTime @default(now())
@@ -332,9 +332,9 @@ model Invoice {
   invoiceNumber String       @unique // formato: MTJ-YYYYMM-XXXX
   issuerId     String        // userId del traductor que emite
   recipientId  String        // userId del cliente
-  amount       Float
-  vatAmount    Float
-  totalAmount  Float
+  amount       Decimal  @db.Decimal(10,2)
+  vatAmount    Decimal  @db.Decimal(10,2)
+  totalAmount  Decimal  @db.Decimal(10,2)
   xmlContent   String?       @db.Text // XML Verifactu
   pdfUrl       String?       // PDF factura (Vercel Blob)
   status       InvoiceStatus @default(pending)
@@ -379,8 +379,8 @@ model Review {
   createdAt    DateTime @default(now())
 
   order      Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  client     User  @relation("ClientReviews", fields: [clientId], references: [id])
-  translator User  @relation("TranslatorReviews", fields: [translatorId], references: [id])
+  client     User  @relation("ClientReviews", fields: [clientId], references: [id], onDelete: Cascade)
+  translator User  @relation("TranslatorReviews", fields: [translatorId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([translatorId])

@@ -2,6 +2,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { AvailabilityToggle } from "@/components/dashboard/availability-toggle";
+import { GuidedTour } from "@/components/dashboard/guided-tour";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function TranslatorDashboard() {
   let monthRevenue = 0;
   let widgetLeads = 0;
   let avgRating = 0;
+  let hasSubscription = false;
   let recentOrders: {
     id: string;
     client: { name: string | null } | null;
@@ -92,10 +94,19 @@ export default async function TranslatorDashboard() {
 
     profile = p;
     activeCount = active;
-    recentOrders = orders;
-    monthRevenue = closedOrders._sum.price || 0;
+    recentOrders = orders.map((o) => ({ ...o, price: o.price ? Number(o.price) : null }));
+    monthRevenue = Number(closedOrders._sum.price) || 0;
     widgetLeads = leads;
-    avgRating = p?.avgRating || 0;
+    avgRating = p?.avgRating ? Number(p.avgRating) : 0;
+
+    // Check subscription
+    if (p) {
+      const sub = await prisma.subscription.findUnique({
+        where: { translatorId: p.id },
+        select: { status: true },
+      });
+      hasSubscription = sub?.status === "active";
+    }
   } catch {
     // DB unavailable — show empty state
   }
@@ -109,6 +120,50 @@ export default async function TranslatorDashboard() {
 
   return (
     <div>
+      <GuidedTour />
+
+      {/* Subscription banner */}
+      {!hasSubscription && session.user.role === "translator" && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #1A3A2A 0%, #2D6A4F 100%)",
+            borderRadius: 10,
+            padding: "16px 20px",
+            marginBottom: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div>
+            <p className="font-sans" style={{ color: "#fff", fontSize: 14, fontWeight: 600, margin: 0 }}>
+              Activa el Plan Fundador para acceder a todas las herramientas
+            </p>
+            <p className="font-sans" style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, margin: "4px 0 0" }}>
+              Editor bilingüe, firma eIDAS, facturación Verifactu, cobros Stripe y más por 49€/mes.
+            </p>
+          </div>
+          <a
+            href="/dashboard/translator/payments"
+            className="font-sans"
+            style={{
+              background: "#C9882A",
+              color: "#fff",
+              padding: "8px 20px",
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Suscribirme — 49€/mes
+          </a>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
         <div

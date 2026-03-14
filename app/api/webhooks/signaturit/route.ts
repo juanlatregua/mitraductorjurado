@@ -1,13 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSignedDocumentUrl } from "@/lib/signaturit";
+import crypto from "crypto";
 
 // POST — Webhook de Signaturit
 // Signaturit envía eventos cuando el estado de una firma cambia
 // Configurar en: Signaturit Dashboard → Settings → Webhooks
 // URL: https://mitraductorjurado.es/api/webhooks/signaturit
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  const rawBody = await req.text();
+
+  // Verify HMAC signature from Signaturit
+  const webhookSecret = process.env.SIGNATURIT_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    const signature = req.headers.get("x-signaturit-signature");
+    if (!signature) {
+      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+    }
+    const expected = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(rawBody)
+      .digest("hex");
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+  }
+
+  let body;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   // Signaturit envía el evento con la estructura:
   // { type: "signature_completed", signature: { id, status, documents: [...] } }
@@ -36,10 +60,14 @@ export async function POST(req: NextRequest) {
       // Descargar el documento firmado
       let signedDocUrl: string | null = null;
       if (signatureData.documents?.[0]?.id) {
-        signedDocUrl = await getSignedDocumentUrl(
-          signaturitId,
-          signatureData.documents[0].id
-        );
+        try {
+          signedDocUrl = await getSignedDocumentUrl(
+            signaturitId,
+            signatureData.documents[0].id
+          );
+        } catch (err) {
+          console.error("Failed to download signed document:", err);
+        }
       }
 
       await prisma.signature.update({

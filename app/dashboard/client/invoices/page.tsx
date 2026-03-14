@@ -31,7 +31,7 @@ export default async function ClientInvoicesPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const totalPaid = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+  const totalPaid = invoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
 
   return (
     <div className="max-w-4xl">

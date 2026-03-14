@@ -1,43 +1,80 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { LANG_NAMES, CATEGORY_NAMES } from "@/lib/constants";
+import { isCuid, parseSlugMaecNumber, generateTranslatorSlug } from "@/lib/slug";
 
 interface Props {
-  params: { id: string };
+  params: { slug: string };
 }
 
-async function getTranslator(id: string) {
-  return prisma.translatorProfile.findUnique({
-    where: { id },
-    include: {
-      user: { select: { name: true, image: true } },
-      languagePairs: true,
-      specialties: true,
-    },
+/**
+ * Resolve a translator profile from a slug or legacy cuid.
+ *
+ * Strategy:
+ * 1. If the param looks like a cuid, query by profile.id first, then by userId.
+ * 2. Otherwise, parse the MAEC digits from the end of the slug and query by maecNumber.
+ */
+async function getTranslator(slugOrId: string) {
+  const include = {
+    user: { select: { name: true, image: true } },
+    languagePairs: true,
+    specialties: true,
+  } as const;
+
+  if (isCuid(slugOrId)) {
+    // Legacy URL with cuid — try profile id first, then userId
+    const byId = await prisma.translatorProfile.findUnique({
+      where: { id: slugOrId },
+      include,
+    });
+    if (byId) return byId;
+
+    return prisma.translatorProfile.findUnique({
+      where: { userId: slugOrId },
+      include,
+    });
+  }
+
+  // SEO slug — extract MAEC digits from the end
+  const digits = parseSlugMaecNumber(slugOrId);
+  if (!digits) return null;
+
+  // maecNumber in DB is stored as "N.3850"
+  const maecNumber = `N.${digits}`;
+
+  return prisma.translatorProfile.findFirst({
+    where: { maecNumber },
+    include,
   });
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const translator = await getTranslator(params.id);
+  const translator = await getTranslator(params.slug);
   if (!translator) return { title: "Traductor no encontrado" };
 
   const name = translator.user.name || "Traductor jurado";
   const langs = translator.languagePairs
-    .map((lp) => `${LANG_NAMES[lp.sourceLang] || lp.sourceLang} → ${LANG_NAMES[lp.targetLang] || lp.targetLang}`)
+    .map((lp) => `${LANG_NAMES[lp.sourceLang] || lp.sourceLang} \u2192 ${LANG_NAMES[lp.targetLang] || lp.targetLang}`)
     .join(", ");
 
   return {
-    title: `${name} — Traductor Jurado ${translator.maecNumber} | mitraductorjurado.es`,
-    description: `${name}, Traductor-Intérprete Jurado (${translator.maecNumber}). ${langs}. ${translator.province || "España"}.`,
+    title: `${name} \u2014 Traductor Jurado ${translator.maecNumber} | mitraductorjurado.es`,
+    description: `${name}, Traductor-Int\u00e9rprete Jurado (${translator.maecNumber}). ${langs}. ${translator.province || "Espa\u00f1a"}.`,
   };
 }
 
 export default async function TranslatorPublicProfile({ params }: Props) {
-  const translator = await getTranslator(params.id);
+  const translator = await getTranslator(params.slug);
   if (!translator) notFound();
 
+  // If accessed via legacy cuid, redirect to canonical slug URL for SEO
   const name = translator.user.name || "Traductor jurado";
+  const canonicalSlug = generateTranslatorSlug(name, translator.maecNumber);
+
+  if (isCuid(params.slug) && canonicalSlug) {
+    redirect(`/translators/${canonicalSlug}`);
+  }
 
   return (
     <div className="min-h-screen bg-navy-50">
@@ -62,7 +99,7 @@ export default async function TranslatorPublicProfile({ params }: Props) {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-4xl text-navy-400">
-                  👤
+                  {"\uD83D\uDC64"}
                 </div>
               )}
             </div>
@@ -78,8 +115,8 @@ export default async function TranslatorPublicProfile({ params }: Props) {
               </div>
 
               <p className="text-navy-500 mb-3">
-                Traductor-Intérprete Jurado {translator.maecNumber}
-                {translator.province && ` · ${translator.province}`}
+                Traductor-Int&eacute;rprete Jurado {translator.maecNumber}
+                {translator.province && ` \u00b7 ${translator.province}`}
               </p>
 
               {/* Idiomas */}
@@ -89,7 +126,7 @@ export default async function TranslatorPublicProfile({ params }: Props) {
                     key={lp.id}
                     className="bg-navy-100 text-navy-700 text-sm font-medium px-3 py-1 rounded-full"
                   >
-                    {LANG_NAMES[lp.sourceLang] || lp.sourceLang} →{" "}
+                    {LANG_NAMES[lp.sourceLang] || lp.sourceLang} {"\u2192"}{" "}
                     {LANG_NAMES[lp.targetLang] || lp.targetLang}
                   </span>
                 ))}
@@ -102,15 +139,15 @@ export default async function TranslatorPublicProfile({ params }: Props) {
                     <div>
                       <span className="text-navy-500">Tarifa/palabra: </span>
                       <span className="font-semibold text-navy-900">
-                        {translator.ratePerWord.toFixed(2)} €
+                        {translator.ratePerWord.toFixed(2)} &euro;
                       </span>
                     </div>
                   )}
                   {translator.rateMinimum && (
                     <div>
-                      <span className="text-navy-500">Mínimo: </span>
+                      <span className="text-navy-500">M&iacute;nimo: </span>
                       <span className="font-semibold text-navy-900">
-                        {translator.rateMinimum.toFixed(0)} €
+                        {translator.rateMinimum.toFixed(0)} &euro;
                       </span>
                     </div>
                   )}
@@ -121,12 +158,12 @@ export default async function TranslatorPublicProfile({ params }: Props) {
               {translator.reviewCount > 0 && (
                 <div className="flex items-center gap-2 mt-3 text-sm">
                   <span className="text-amber-500">
-                    {"★".repeat(Math.round(translator.avgRating))}
-                    {"☆".repeat(5 - Math.round(translator.avgRating))}
+                    {"\u2605".repeat(Math.round(translator.avgRating))}
+                    {"\u2606".repeat(5 - Math.round(translator.avgRating))}
                   </span>
                   <span className="text-navy-500">
                     {translator.avgRating.toFixed(1)} ({translator.reviewCount}{" "}
-                    {translator.reviewCount === 1 ? "valoración" : "valoraciones"})
+                    {translator.reviewCount === 1 ? "valoraci\u00f3n" : "valoraciones"})
                   </span>
                 </div>
               )}
@@ -138,7 +175,7 @@ export default async function TranslatorPublicProfile({ params }: Props) {
         {translator.bio && (
           <div className="bg-white rounded-xl border border-navy-100 p-8 mb-6">
             <h2 className="text-lg font-bold text-navy-900 mb-3">
-              Sobre mí
+              Sobre m&iacute;
             </h2>
             <p className="text-navy-600 whitespace-pre-line">{translator.bio}</p>
           </div>
@@ -166,7 +203,7 @@ export default async function TranslatorPublicProfile({ params }: Props) {
         {/* CTA */}
         <div className="bg-accent-50 rounded-xl border border-accent-200 p-8 text-center">
           <h2 className="text-xl font-bold text-navy-900 mb-2">
-            ¿Necesitas una traducción jurada?
+            &iquest;Necesitas una traducci&oacute;n jurada?
           </h2>
           <p className="text-navy-500 mb-4">
             Solicita presupuesto sin compromiso.

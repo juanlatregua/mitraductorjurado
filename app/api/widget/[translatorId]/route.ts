@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { sendWidgetLeadNotification } from "@/lib/email";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 
 interface Params {
   params: { translatorId: string };
@@ -57,6 +58,9 @@ export async function GET(req: NextRequest, { params }: Params) {
 
 // POST — Crear lead desde el widget
 export async function POST(req: NextRequest, { params }: Params) {
+  const rateLimited = await checkRateLimit("widgetLead", getClientIP(req));
+  if (rateLimited) return rateLimited;
+
   const origin = req.headers.get("origin") || req.headers.get("referer") || "unknown";
   const sourceDomain = new URL(origin).hostname || origin;
 
