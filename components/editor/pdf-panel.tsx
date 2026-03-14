@@ -59,13 +59,13 @@ export function PdfPanel({
     (async () => {
       try {
         const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
         const doc = await pdfjsLib.getDocument(pdfUrl).promise;
         if (cancelled) return;
         setPdfDoc(doc);
         onTotalPagesChange(doc.numPages);
-      } catch {
+      } catch (err) {
+        console.error("PDF load error:", err);
         if (!cancelled) setError("Error al cargar el PDF");
       } finally {
         if (!cancelled) setLoading(false);

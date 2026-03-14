@@ -124,7 +124,7 @@ export function BilingualEditor({
     try {
       const pdfjsLib = await import("pdfjs-dist");
       pdfjsLib.GlobalWorkerOptions.workerSrc =
-        `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+        "/pdf.worker.min.mjs";
       const doc = await pdfjsLib.getDocument(originalFileUrl).promise;
       let fullText = "";
       for (let i = 1; i <= doc.numPages; i++) {
