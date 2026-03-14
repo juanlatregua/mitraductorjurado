@@ -30,22 +30,39 @@ export function Navbar() {
         <Link href="/">
           <Logo size="sm" variant="dark" />
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Link
             href="/translators"
             className="hidden sm:inline-block font-sans text-sm font-light px-4 py-2 rounded-lg transition-colors"
-            style={{ color: "rgba(255,255,255,0.7)" }}
+            style={{ color: "rgba(255,255,255,0.6)" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.6)")}
           >
             Directorio
           </Link>
+
+          {/* Separator */}
+          <span
+            className="hidden sm:inline-block"
+            style={{ width: 1, height: 16, background: "rgba(255,255,255,0.12)" }}
+          />
+
+          <Link
+            href="/auth/login"
+            className="font-sans text-sm font-light px-4 py-2 rounded-lg transition-colors"
+            style={{ color: "rgba(255,255,255,0.6)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.6)")}
+          >
+            Soy cliente
+          </Link>
+
           <Link
             href="/auth/login"
             className="font-sans text-sm font-medium px-5 py-2 rounded-full transition-all btn-glow"
             style={{ backgroundColor: "var(--color-accent)", color: "#fff" }}
           >
-            Acceder
+            Soy traductor
           </Link>
         </div>
       </div>
