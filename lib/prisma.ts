@@ -16,6 +16,10 @@ function createPrismaClient(): PrismaClient {
 
   // Middleware: setear app.tenant_id en cada query para RLS
   client.$use(async (params, next) => {
+    // Skip raw queries to avoid infinite recursion ($executeRawUnsafe triggers middleware)
+    if (params.action === "executeRaw" || params.action === "queryRaw") {
+      return next(params);
+    }
     const tenantId = DEFAULT_TENANT_ID;
     try {
       await client.$executeRawUnsafe(
