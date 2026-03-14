@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { put, head } from "@vercel/blob";
 import { z } from "zod";
 
 interface Params {
@@ -23,10 +22,6 @@ const documentSchema = z.object({
   status: z.enum(["draft", "reviewing", "approved"]),
 });
 
-function blobPath(orderId: string) {
-  return `documents/${orderId}/translation.json`;
-}
-
 // GET — Cargar documento de traducción
 export async function GET(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
@@ -36,7 +31,14 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const order = await prisma.order.findUnique({
     where: { id: params.orderId },
-    select: { translatorId: true, clientId: true, sourceLang: true, targetLang: true, documentType: true },
+    select: {
+      translatorId: true,
+      clientId: true,
+      sourceLang: true,
+      targetLang: true,
+      documentType: true,
+      translationData: true,
+    },
   });
 
   if (!order) {
@@ -52,12 +54,10 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
   }
 
-  // Intentar cargar desde Blob
-  try {
-    const blob = await head(blobPath(params.orderId));
-    if (blob) {
-      const res = await fetch(blob.url);
-      const data = await res.json();
+  // Cargar desde el campo translationData
+  if (order.translationData) {
+    try {
+      const data = JSON.parse(order.translationData);
       return NextResponse.json({
         orderId: params.orderId,
         sourceLang: order.sourceLang,
@@ -65,9 +65,9 @@ export async function GET(req: NextRequest, { params }: Params) {
         documentType: order.documentType,
         ...data,
       });
+    } catch {
+      // JSON corrupted — devolver vacío
     }
-  } catch {
-    // No existe todavía — devolver documento vacío
   }
 
   return NextResponse.json({
@@ -105,20 +105,15 @@ export async function PUT(req: NextRequest, { params }: Params) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Datos inválidos", details: parsed.error.flatten() },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  // Guardar en Vercel Blob
-  const blob = await put(
-    blobPath(params.orderId),
-    JSON.stringify(parsed.data),
-    {
-      access: "public",
-      contentType: "application/json",
-      addRandomSuffix: false,
-    }
-  );
+  // Guardar en el campo translationData del Order
+  await prisma.order.update({
+    where: { id: params.orderId },
+    data: { translationData: JSON.stringify(parsed.data) },
+  });
 
-  return NextResponse.json({ ok: true, url: blob.url });
+  return NextResponse.json({ ok: true });
 }

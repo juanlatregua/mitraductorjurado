@@ -2,7 +2,6 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { BilingualEditor } from "@/components/editor/bilingual-editor";
-import { head } from "@vercel/blob";
 import type { TranslationSegment, BilingualDocument } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +26,7 @@ export default async function EditorPage({ params }: Props) {
         originalFileUrl: true,
         price: true,
         status: true,
+        translationData: true,
         client: { select: { name: true } },
       },
     }),
@@ -40,20 +40,18 @@ export default async function EditorPage({ params }: Props) {
     notFound();
   }
 
-  // Load existing document from Blob
+  // Load segments from DB
   let segments: TranslationSegment[] = [];
   let docStatus: BilingualDocument["status"] = "draft";
 
-  try {
-    const blob = await head(`documents/${params.orderId}/translation.json`);
-    if (blob) {
-      const res = await fetch(blob.url);
-      const data = await res.json();
+  if (order.translationData) {
+    try {
+      const data = JSON.parse(order.translationData);
       segments = data.segments || [];
       docStatus = data.status || "draft";
+    } catch {
+      // Corrupted data — start fresh
     }
-  } catch {
-    // No saved document yet
   }
 
   return (
