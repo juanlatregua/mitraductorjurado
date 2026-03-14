@@ -1,8 +1,10 @@
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { AvailabilityToggle } from "@/components/dashboard/availability-toggle";
 import { GuidedTour } from "@/components/dashboard/guided-tour";
+import { SubscribedToast } from "@/components/dashboard/subscribed-toast";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +123,9 @@ export default async function TranslatorDashboard() {
   return (
     <div>
       <GuidedTour />
+      <Suspense fallback={null}>
+        <SubscribedToast />
+      </Suspense>
 
       {/* Subscription banner */}
       {!hasSubscription && session.user.role === "translator" && (
@@ -146,7 +151,7 @@ export default async function TranslatorDashboard() {
             </p>
           </div>
           <a
-            href="/dashboard/translator/payments"
+            href="/dashboard/translator/subscribe"
             className="font-sans"
             style={{
               background: "#C9882A",

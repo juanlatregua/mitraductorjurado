@@ -1,15 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   isStripeConfigured,
   getOrCreateCustomer,
-  createSubscription,
+  createCheckoutSession,
   cancelSubscription,
 } from "@/lib/stripe";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { z } from "zod";
 
 // GET — obtener estado de suscripción del traductor
 export async function GET() {
@@ -45,7 +44,7 @@ export async function GET() {
 }
 
 // POST — crear suscripción al plan fundador
-export async function POST(req: NextRequest) {
+export async function POST() {
   if (!isStripeConfigured()) {
     return NextResponse.json({ error: "Stripe no configurado" }, { status: 503 });
   }
@@ -96,35 +95,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Crear suscripción en Stripe
-  const result = await createSubscription({
+  // Crear Checkout Session en modo suscripción
+  const baseUrl = process.env.NEXTAUTH_URL || "https://mitraductorjurado.es";
+  const checkoutUrl = await createCheckoutSession({
     customerId,
     priceId,
+    translatorProfileId: user.translatorProfile.id,
+    successUrl: `${baseUrl}/dashboard/translator?subscribed=true`,
+    cancelUrl: `${baseUrl}/dashboard/translator/subscribe`,
   });
 
-  // Guardar en BD (status será "incomplete" hasta que se pague)
-  await prisma.subscription.upsert({
-    where: { translatorId: user.translatorProfile.id },
-    create: {
-      translatorId: user.translatorProfile.id,
-      stripeSubscriptionId: result.subscriptionId,
-      stripeCustomerId: customerId,
-      priceId,
-      status: result.status,
-      currentPeriodEnd: new Date(), // se actualiza por webhook
-    },
-    update: {
-      stripeSubscriptionId: result.subscriptionId,
-      stripeCustomerId: customerId,
-      status: result.status,
-    },
-  });
-
-  return NextResponse.json({
-    subscriptionId: result.subscriptionId,
-    clientSecret: result.clientSecret,
-    status: result.status,
-  }, { status: 201 });
+  return NextResponse.json({ checkoutUrl });
 }
 
 // DELETE — cancelar suscripción (al final del período)

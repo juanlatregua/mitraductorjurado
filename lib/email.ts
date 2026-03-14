@@ -301,3 +301,19 @@ export async function sendWidgetLeadNotification(
     )
   );
 }
+
+export async function sendSubscriptionPaymentFailed(email: string, name: string) {
+  const url = `${BASE_URL}/dashboard/translator/payments`;
+  await send(
+    email,
+    "Problema con el pago de tu suscripcion",
+    wrapHtml(
+      "No hemos podido cobrar tu suscripcion",
+      `<p style="color:#475569;font-size:14px">Hola ${name},</p>
+       <p style="color:#475569;font-size:14px">El ultimo cobro de tu Plan Fundador (49&#8364;/mes) ha fallado. Tu acceso a las herramientas profesionales puede verse interrumpido si no se resuelve.</p>
+       <p style="color:#475569;font-size:14px">Por favor, actualiza tu metodo de pago lo antes posible.</p>
+       ${btn("Actualizar metodo de pago", url)}
+       <p style="color:#94a3b8;font-size:12px;margin-top:16px">Si crees que es un error, contacta con nosotros en info@mitraductorjurado.es</p>`
+    )
+  );
+}

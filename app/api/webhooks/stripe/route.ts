@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
-import { sendPaymentConfirmation } from "@/lib/email";
+import { sendPaymentConfirmation, sendSubscriptionPaymentFailed } from "@/lib/email";
 import Stripe from "stripe";
 
 // Desactivar body parsing — Stripe necesita el raw body
@@ -80,11 +80,51 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    // ─── Checkout Session (suscripción completada) ───
+    case "checkout.session.completed": {
+      const checkoutSession = event.data.object as Stripe.Checkout.Session;
+
+      if (checkoutSession.mode === "subscription" && checkoutSession.subscription) {
+        const subId = typeof checkoutSession.subscription === "string"
+          ? checkoutSession.subscription
+          : checkoutSession.subscription.id;
+        const customerId = typeof checkoutSession.customer === "string"
+          ? checkoutSession.customer
+          : (checkoutSession.customer as Stripe.Customer)?.id || "";
+        const translatorProfileId = checkoutSession.metadata?.translatorProfileId;
+
+        if (translatorProfileId) {
+          const stripeSub = await stripe.subscriptions.retrieve(subId);
+          const priceId = stripeSub.items.data[0]?.price.id || "";
+
+          await prisma.subscription.upsert({
+            where: { translatorId: translatorProfileId },
+            create: {
+              translatorId: translatorProfileId,
+              stripeSubscriptionId: subId,
+              stripeCustomerId: customerId,
+              priceId,
+              status: "active",
+              currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+            },
+            update: {
+              stripeSubscriptionId: subId,
+              stripeCustomerId: customerId,
+              priceId,
+              status: "active",
+              currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+              cancelledAt: null,
+            },
+          });
+        }
+      }
+      break;
+    }
+
     // ─── Suscripciones ───
     case "customer.subscription.created":
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
-      const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
 
       await prisma.subscription.updateMany({
         where: { stripeSubscriptionId: sub.id },
@@ -108,6 +148,38 @@ export async function POST(req: NextRequest) {
           cancelledAt: new Date(),
         },
       });
+      break;
+    }
+
+    // ─── Pago de factura fallido ───
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+      if (invoice.subscription) {
+        const subId = typeof invoice.subscription === "string"
+          ? invoice.subscription
+          : invoice.subscription.id;
+
+        await prisma.subscription.updateMany({
+          where: { stripeSubscriptionId: subId },
+          data: { status: "past_due" },
+        });
+
+        // Enviar email de aviso
+        const custId = typeof invoice.customer === "string"
+          ? invoice.customer
+          : (invoice.customer as Stripe.Customer)?.id || "";
+        try {
+          const customer = await stripe.customers.retrieve(custId);
+          if (customer && !customer.deleted && customer.email) {
+            await sendSubscriptionPaymentFailed(
+              customer.email,
+              customer.name || "Traductor"
+            );
+          }
+        } catch {
+          // Email sending failure shouldn't break webhook
+        }
+      }
       break;
     }
   }

@@ -201,4 +201,29 @@ export async function getCustomerPortalLink(
   return session.url;
 }
 
+/**
+ * Crea una Checkout Session de Stripe en modo suscripción.
+ * Redirige al usuario a Stripe para completar el pago.
+ */
+export async function createCheckoutSession(opts: {
+  customerId: string;
+  priceId: string;
+  translatorProfileId: string;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<string> {
+  const session = await stripe.checkout.sessions.create({
+    customer: opts.customerId,
+    mode: "subscription",
+    line_items: [{ price: opts.priceId, quantity: 1 }],
+    success_url: opts.successUrl,
+    cancel_url: opts.cancelUrl,
+    metadata: {
+      platform: "mitraductorjurado",
+      translatorProfileId: opts.translatorProfileId,
+    },
+  });
+  return session.url!;
+}
+
 export { PLATFORM_FEE_PERCENT };

@@ -60,20 +60,17 @@ function PaymentsContent() {
     try {
       const res = await fetch("/api/stripe/subscription", { method: "POST" });
       const data = await res.json();
-      if (data.clientSecret) {
-        // TODO: Abrir Stripe Elements para completar pago
-        // Por ahora redirigir al portal
-        const portalRes = await fetch("/api/stripe/portal", { method: "POST" });
-        const portalData = await portalRes.json();
-        if (portalData.url) {
-          window.location.href = portalData.url;
-        }
-      } else if (data.status === "active") {
-        window.location.reload();
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
+      }
+      if (data.error) {
+        alert(data.error);
       }
     } catch {
-      setSubscribing(false);
+      // Fallback
     }
+    setSubscribing(false);
   }
 
   async function handleCancel() {
