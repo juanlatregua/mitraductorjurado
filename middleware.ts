@@ -76,5 +76,6 @@ export const config = {
     "/api/documents/:path*",
     "/api/assignments/:path*",
     "/api/availability/:path*",
+    "/api/editor/:path*",
   ],
 };

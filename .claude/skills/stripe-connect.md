@@ -1,52 +1,96 @@
-# Stripe Connect en mitraductorjurado
+# Stripe en mitraductorjurado
 
-## Estado actual: TODO
-Stripe Connect está configurado en las dependencias (`stripe@^14.18.0`) y en
-el schema de Prisma, pero NO está implementado todavía.
+## Estado: COMPLETADO (S10 Connect + Billing)
 
-## Flujo diseñado
+Stripe tiene dos flujos independientes:
+1. **Connect Express** — traductores reciben pagos de clientes
+2. **Billing** — traductores pagan suscripción Plan Fundador (49€/mes)
+
+## Flujo Connect (pagos de clientes)
 ```
 Cliente paga → PaymentIntent con transfer_data
   → Plataforma retiene comisión (STRIPE_PLATFORM_FEE_PERCENT)
   → Traductor recibe su parte vía Stripe Connect Express
 ```
 
-## Modelos Prisma preparados
+### API routes
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/api/stripe/connect` | POST | Genera enlace onboarding Express |
+| `/api/stripe/checkout` | POST | Crea PaymentIntent (cobra totalAmount con IVA) |
+| `/api/webhooks/stripe` | POST | Procesa payment_intent.succeeded, account.updated, etc. |
 
-### TranslatorProfile (cuenta Stripe)
-```prisma
-stripeAccountId  String?   // ID de cuenta Express
-stripeOnboarded  Boolean   // true tras completar verificación Stripe
+### IVA en checkout
+```typescript
+import { calculateVAT } from "@/lib/verifactu";
+const { totalAmount } = calculateVAT(order.price); // base + 21% IVA
+// totalAmount se pasa a Stripe como amount
+// Payment.amount en DB = totalAmount (con IVA incluido)
 ```
 
-### Payment (registro de transacción)
+## Flujo Billing (suscripciones)
+```
+Traductor → Crear suscripción → Stripe Checkout Session
+  → Webhook: checkout.session.completed → crear Subscription en DB
+  → customer.subscription.updated/deleted → actualizar estado
+```
+
+### API routes
+| Ruta | Método | Descripción |
+|------|--------|-------------|
+| `/api/stripe/subscription` | GET | Estado suscripción del traductor |
+| `/api/stripe/subscription` | POST | Crear checkout session para Plan Fundador |
+| `/api/stripe/subscription` | DELETE | Cancelar suscripción |
+| `/api/stripe/portal` | POST | Generar enlace Customer Portal |
+
+### Entidades Stripe por traductor
+Cada traductor tiene DOS identidades en Stripe:
+- **Connect Account** (`stripeAccountId` en TranslatorProfile) — recibir pagos
+- **Customer** (`stripeCustomerId` en TranslatorProfile) — pagar suscripción
+
+## Modelos Prisma
+
+### TranslatorProfile
+```prisma
+stripeAccountId   String?   // Connect Express account
+stripeOnboarded   Boolean   // true tras verificación Connect
+stripeCustomerId  String?   // Billing customer
+```
+
+### Payment (transacción por pedido)
 ```prisma
 stripePaymentIntentId  String   @unique
-amount                 Float    // total cobrado al cliente
+amount                 Float    // total cobrado (con IVA)
 platformFee            Float    // comisión plataforma
 translatorAmount       Float    // lo que recibe el traductor
-currency               String   @default("eur")
 status                 String   // succeeded | pending | failed
 ```
 
-## Placeholders existentes
-- `app/api/payments/.gitkeep` — API routes pendientes
-- `app/api/webhooks/.gitkeep` — Webhook handler pendiente
-- `.env.example` tiene: STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY,
-  STRIPE_WEBHOOK_SECRET, STRIPE_PLATFORM_FEE_PERCENT, STRIPE_PRICE_ID_MONTHLY
+### Subscription (suscripción mensual)
+```prisma
+stripeSubscriptionId  String   @unique
+stripePriceId         String
+status                String   // active | past_due | canceled | ...
+currentPeriodEnd      DateTime
+```
 
-## TODO cuando se implemente
-1. Onboarding Stripe Express para traductores (generar enlace de verificación)
-2. Crear PaymentIntent con `transfer_data.destination = stripeAccountId`
-3. Webhook `payment_intent.succeeded` → actualizar Order + Payment
-4. Dashboard ingresos del traductor
-5. Probar con `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+## Variables de entorno
+```env
+STRIPE_SECRET_KEY=sk_...
+STRIPE_PUBLISHABLE_KEY=pk_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PLATFORM_FEE_PERCENT=15
+STRIPE_PRICE_ID_MONTHLY=price_...    # Plan Fundador 49€/mes
+```
 
-## Regla de negocio
+## Testing local
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
+## Reglas de negocio
+- `order.price` en DB = base imponible (sin IVA)
+- Stripe cobra `calculateVAT(order.price).totalAmount` (con 21% IVA)
 - La comisión es configurable via `STRIPE_PLATFORM_FEE_PERCENT`
 - En derivación: Stripe divide entre colega (agreedPrice) y broker (brokerMargin)
 - El cliente SIEMPRE paga al traductor principal, nunca al colega
-
-## Qué NO tocar sin entender
-- El flujo de comisión afecta facturación (Verifactu) y contabilidad
-- Un error en el split de pagos genera problemas legales reales

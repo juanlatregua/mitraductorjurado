@@ -79,6 +79,7 @@ model User {
   receivedReviews   Review[]           @relation("TranslatorReviews")
   accounts          Account[]
   sessions          Session[]
+  glossaryEntries   GlossaryEntry[]    @relation("TranslatorGlossary")
 
   @@index([tenantId])
   @@index([email])
@@ -245,6 +246,8 @@ model Subscription {
   status               String    // active | past_due | canceled | incomplete
   currentPeriodEnd     DateTime
   cancelledAt          DateTime?
+  claudeCredits        Int       @default(50)  // créditos IA restantes este periodo
+  claudeCreditsResetAt DateTime? // fecha próximo reset de créditos
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -280,6 +283,7 @@ model Order {
   invoice    Invoice?
   review     Review?
   signature  Signature?
+  segments   Segment[]
 
   @@index([tenantId])
   @@index([clientId])
@@ -403,4 +407,46 @@ model WidgetLead {
 
   @@index([tenantId])
   @@index([translatorId])
+}
+
+// ─── SEGMENTOS DE TRADUCCIÓN ──────────────────────────────────────────────────
+
+model Segment {
+  id          String   @id @default(cuid())
+  tenantId    String   @default("default")
+  orderId     String
+  index       Int
+  original    String   @db.Text
+  translation String?  @db.Text
+  status      String   @default("empty")   // confirmed|suggestion|memory|template|empty
+  source      String   @default("manual")  // deepl|memory|template|manual|claude
+  memoryScore Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, index])
+  @@index([orderId])
+  @@index([tenantId])
+}
+
+// ─── GLOSARIO DEL TRADUCTOR ───────────────────────────────────────────────────
+
+model GlossaryEntry {
+  id           String   @id @default(cuid())
+  tenantId     String   @default("default")
+  translatorId String
+  source       String
+  target       String
+  languagePair String
+  usageCount   Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  translator User @relation("TranslatorGlossary", fields: [translatorId], references: [id], onDelete: Cascade)
+
+  @@unique([translatorId, source, languagePair])
+  @@index([translatorId, languagePair])
+  @@index([tenantId])
 }

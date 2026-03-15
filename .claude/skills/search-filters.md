@@ -1,15 +1,12 @@
-# Búsqueda y filtros de traductores
+# Directorio público y filtros de traductores
 
-## Estado actual: TODO
-El directorio público `/translators` con búsqueda es la siguiente tarea (Sprint 3).
-La página de perfil individual `/translators/[id]` SÍ está implementada.
+## Estado: COMPLETADO (S3 Directorio + S14 MAEC Registry)
 
-## Diseño previsto
+### Páginas
+- `/translators` — Grid de cards con filtros, paginación SSR, query params en URL
+- `/translators/[id]` — Perfil individual con `generateMetadata()` para SEO
 
-### Página: `/translators` (o `/traductores` para SEO)
-Grid de cards con paginación SSR. Query params en URL para filtros compartibles.
-
-### Filtros disponibles (por implementar)
+### Filtros implementados
 | Filtro | Campo en DB | Tipo UI |
 |--------|------------|---------|
 | Par de idiomas | LanguagePair.sourceLang/targetLang | Select dinámico |
@@ -19,25 +16,30 @@ Grid de cards con paginación SSR. Query params en URL para filtros compartibles
 | Valoración mínima | TranslatorProfile.avgRating | Slider/select |
 | Texto libre | User.name, LanguagePair | ILIKE en Prisma |
 
-### Datos ya existentes para filtros
-- 15 idiomas definidos en constante (fr, en, de, it, pt, ar, zh, ja, ru, ro, pl, nl, ca, eu, gl)
-- 5 categorías DocumentCategory (academico, notarial, administrativo, economico, juridico)
+### Componentes
+- `components/translators/TranslatorCard.tsx` — Card con foto, idiomas, MAEC badge
+- `components/translators/SearchFilters.tsx` — Panel de filtros lateral
+
+### Datos para filtros
+- Idiomas: 30+ definidos en `LANG_CODE` map (lib/constants.ts + landing helpers)
+- 5 categorías: academico, notarial, administrativo, economico, juridico
 - 52 provincias españolas
-- Enum AvailabilityStatus (available, busy, vacation)
+- Enum AvailabilityStatus: available, busy, vacation
 
-## Cómo añadir un filtro nuevo (cuando se implemente)
-1. Añadir query param en la URL (`?idioma=fr&provincia=Madrid`)
-2. Parsear params en el server component
-3. Construir `where` clause de Prisma con los filtros activos
-4. Añadir UI del filtro (select, checkbox, etc.)
-5. Asegurar que el índice de Prisma cubre el campo (ver `@@index` en schema)
+### MAECRegistry (S14)
+- 10,624 traductores jurados importados del PDF oficial MAEC
+- Modelo: `tij` (int), `nombre` ("APELLIDOS, Nombre"), `idiomas` (String[]), `provincia`, `activo`
+- Landing page muestra traductores reales de MAECRegistry con fallback
+- Perfiles "claimed" = tienen TranslatorProfile.maecNumber = "N.{tij}"
+- Perfiles unclaimed muestran "MAEC ····" (número oculto)
 
-## Índices existentes en schema
+### Índices
 ```
 TranslatorProfile: @@index([tenantId]), @@index([verified]), @@index([province])
 LanguagePair: @@index([tenantId]), @@index([sourceLang, targetLang])
+MAECRegistry: @@index([tenantId]), @@index([tij]), @@index([provincia])
 ```
 
-## SEO
-La página `/translators` debe generar sitemap dinámico con todos los perfiles
-verificados. Cada perfil `/translators/[id]` ya tiene `generateMetadata()`.
+### SEO
+- `/sitemap.xml` — dinámico con todos los perfiles verificados
+- Cada `/translators/[id]` tiene `generateMetadata()` con nombre, idiomas, provincia

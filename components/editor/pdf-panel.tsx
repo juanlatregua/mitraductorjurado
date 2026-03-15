@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 interface Props {
   pdfUrl: string | null;
   viewMode: "pdf" | "text";
-  segments: { id: string; originalText: string }[];
+  segments: { id: string; original: string }[];
   activeSegmentId: string | null;
   currentPage: number;
   totalPages: number;
@@ -130,7 +130,7 @@ export function PdfPanel({
                 transition: "background 0.15s",
               }}
             >
-              {seg.originalText}
+              {seg.original}
             </p>
           ))
         )}

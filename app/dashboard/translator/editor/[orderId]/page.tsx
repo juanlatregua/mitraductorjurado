@@ -2,7 +2,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import { BilingualEditor } from "@/components/editor/bilingual-editor";
-import type { TranslationSegment, BilingualDocument } from "@/types";
+import type { EditorSegment } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -40,15 +40,42 @@ export default async function EditorPage({ params }: Props) {
     notFound();
   }
 
-  // Load segments from DB
-  let segments: TranslationSegment[] = [];
-  let docStatus: BilingualDocument["status"] = "draft";
+  // Load segments: try Segment table first, fallback to translationData JSON
+  let segments: EditorSegment[] = [];
 
-  if (order.translationData) {
+  const dbSegments = await prisma.segment.findMany({
+    where: { orderId: order.id },
+    orderBy: { index: "asc" },
+  });
+
+  if (dbSegments.length > 0) {
+    segments = dbSegments.map((s) => ({
+      id: s.id,
+      index: s.index,
+      original: s.original,
+      translation: s.translation || "",
+      status: s.status as EditorSegment["status"],
+      source: s.source as EditorSegment["source"],
+      memoryScore: s.memoryScore,
+    }));
+  } else if (order.translationData) {
     try {
       const data = JSON.parse(order.translationData);
-      segments = data.segments || [];
-      docStatus = data.status || "draft";
+      const legacySegs = data.segments || [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      segments = legacySegs.map((s: any) => ({
+        id: s.id || `seg-${s.index}`,
+        index: s.index,
+        original: s.originalText || s.original || "",
+        translation: s.translatedText || s.translation || "",
+        status: s.isApproved
+          ? "confirmed" as const
+          : (s.translatedText || s.translation)
+            ? "suggestion" as const
+            : "empty" as const,
+        source: s.isEdited ? "manual" as const : (s.translatedText || s.translation) ? "deepl" as const : "manual" as const,
+        memoryScore: null,
+      }));
     } catch {
       // Corrupted data — start fresh
     }
@@ -67,7 +94,6 @@ export default async function EditorPage({ params }: Props) {
       translatorName={session.user.name || "Traductor"}
       maecNumber={profile?.maecNumber || ""}
       initialSegments={segments}
-      initialStatus={docStatus}
     />
   );
 }

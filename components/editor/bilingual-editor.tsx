@@ -2,10 +2,16 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { PdfPanel } from "./pdf-panel";
-import { SegmentRow } from "./segment-row";
+import { SegmentList } from "./segment-list";
 import { PreviewDrawer } from "./preview-drawer";
+import { PanelHeaders } from "./panel-headers";
+import { StatusBar } from "./status-bar";
+import { ToolsSidebar } from "./tools-sidebar";
+import { InsertBar } from "./insert-bar";
+import { TemplateBanner } from "./template-banner";
+import { MemoryBar } from "./memory-bar";
 import { LANG_NAMES } from "@/lib/constants";
-import type { TranslationSegment, BilingualDocument } from "@/types";
+import type { EditorSegment } from "@/types";
 
 /* ─── Props ─────────────────────────────────────────────────────────────────── */
 
@@ -20,42 +26,7 @@ interface BilingualEditorProps {
   clientName: string;
   translatorName: string;
   maecNumber: string;
-  initialSegments: TranslationSegment[];
-  initialStatus: BilingualDocument["status"];
-}
-
-/* ─── Helpers ───────────────────────────────────────────────────────────────── */
-
-function tabStyle(active: boolean): React.CSSProperties {
-  return {
-    background: active ? "rgba(201,136,42,0.1)" : "transparent",
-    color: active ? "#C9882A" : "#3A6A4A",
-    border: "none",
-    fontSize: 9,
-    fontFamily: "var(--font-mono)",
-    padding: "3px 8px",
-    cursor: "pointer",
-    borderRadius: 2,
-    letterSpacing: 0.5,
-  };
-}
-
-function panelToggleStyle(active: boolean): React.CSSProperties {
-  return {
-    flex: 1,
-    background: active ? "rgba(201,136,42,0.15)" : "transparent",
-    color: active ? "#C9882A" : "#6A9A7A",
-    border: "none",
-    fontSize: 11,
-    fontFamily: "var(--font-mono)",
-    fontWeight: active ? 600 : 400,
-    padding: "6px 0",
-    cursor: "pointer",
-    letterSpacing: 0.5,
-    textTransform: "uppercase" as const,
-    borderBottom: active ? "2px solid #C9882A" : "2px solid transparent",
-    transition: "all 0.15s ease",
-  };
+  initialSegments: EditorSegment[];
 }
 
 /* ─── Component ─────────────────────────────────────────────────────────────── */
@@ -71,15 +42,14 @@ export function BilingualEditor({
   translatorName,
   maecNumber,
   initialSegments,
-  initialStatus,
 }: BilingualEditorProps) {
   /* — State — */
-  const [segments, setSegments] = useState<TranslationSegment[]>(initialSegments);
-  const [docStatus, setDocStatus] = useState<BilingualDocument["status"]>(initialStatus);
+  const [segments, setSegments] = useState<EditorSegment[]>(initialSegments);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [leftView, setLeftView] = useState<"pdf" | "text">("pdf");
   const [rightView, setRightView] = useState<"segments" | "preview">("segments");
   const [previewOpen, setPreviewOpen] = useState(true);
+  const [insertBarVisible, setInsertBarVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -89,6 +59,19 @@ export function BilingualEditor({
   const [newText, setNewText] = useState("");
   const [isNarrow, setIsNarrow] = useState(false);
   const [mobilePanel, setMobilePanel] = useState<"pdf" | "editor">("editor");
+
+  // Template state
+  const [templateInfo, setTemplateInfo] = useState<{
+    id: string;
+    label: string;
+    type: string;
+    language: string;
+    category: string;
+  } | null>(null);
+  const [templateDismissed, setTemplateDismissed] = useState(false);
+
+  // Memory stats (stub)
+  const [memoryStats, setMemoryStats] = useState({ identicalCount: 0, similarCount: 0, glossaryCount: 0 });
 
   /* — Responsive: detect < 1200px — */
   useEffect(() => {
@@ -101,18 +84,33 @@ export function BilingualEditor({
 
   /* — Refs for auto-save — */
   const segmentsRef = useRef(segments);
-  const docStatusRef = useRef(docStatus);
   useEffect(() => { segmentsRef.current = segments; }, [segments]);
-  useEffect(() => { docStatusRef.current = docStatus; }, [docStatus]);
+
+  /* — Fetch template info on mount — */
+  useEffect(() => {
+    fetch(`/api/editor/${orderId}/template`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.template) setTemplateInfo(data.template);
+      })
+      .catch(() => {});
+  }, [orderId]);
+
+  /* — Fetch memory stats on mount — */
+  useEffect(() => {
+    fetch(`/api/editor/${orderId}/memory`)
+      .then((r) => r.json())
+      .then((data) => setMemoryStats(data))
+      .catch(() => {});
+  }, [orderId]);
 
   /* — Derived — */
-  const confirmedCount = segments.filter((s) => s.isApproved).length;
-  const suggestionCount = segments.filter((s) => s.translatedText && !s.isApproved).length;
-  const emptyCount = segments.filter((s) => !s.translatedText).length;
+  const confirmedCount = segments.filter((s) => s.status === "confirmed").length;
   const totalCount = segments.length;
+  const pendingCount = totalCount - confirmedCount;
   const progress = totalCount > 0 ? (confirmedCount / totalCount) * 100 : 0;
   const wordCount = segments.reduce(
-    (acc, s) => acc + s.originalText.split(/\s+/).filter(Boolean).length,
+    (acc, s) => acc + s.original.split(/\s+/).filter(Boolean).length,
     0,
   );
 
@@ -133,13 +131,14 @@ export function BilingualEditor({
       .map((s) => s.trim())
       .filter(Boolean);
     const baseIndex = segments.length;
-    const newSegs: TranslationSegment[] = lines.map((text, i) => ({
+    const newSegs: EditorSegment[] = lines.map((text, i) => ({
       id: `seg-${Date.now()}-${baseIndex + i}`,
       index: baseIndex + i,
-      originalText: text,
-      translatedText: "",
-      isEdited: false,
-      isApproved: false,
+      original: text,
+      translation: "",
+      status: "empty" as const,
+      source: "manual" as const,
+      memoryScore: null,
     }));
     setSegments((prev) => [...prev, ...newSegs]);
     setNewText("");
@@ -152,8 +151,7 @@ export function BilingualEditor({
     setMessage("Extrayendo texto del PDF...");
     try {
       const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "/pdf.worker.min.mjs";
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       const doc = await pdfjsLib.getDocument(originalFileUrl).promise;
       let fullText = "";
       for (let i = 1; i <= doc.numPages; i++) {
@@ -167,13 +165,14 @@ export function BilingualEditor({
         .split(/\n\n+/)
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
-      const newSegs: TranslationSegment[] = paragraphs.map((text, i) => ({
+      const newSegs: EditorSegment[] = paragraphs.map((text, i) => ({
         id: `seg-${Date.now()}-${i}`,
         index: i,
-        originalText: text,
-        translatedText: "",
-        isEdited: false,
-        isApproved: false,
+        original: text,
+        translation: "",
+        status: "empty" as const,
+        source: "manual" as const,
+        memoryScore: null,
       }));
       setSegments(newSegs);
       setMessage(`${newSegs.length} segmentos extra\u00eddos del PDF`);
@@ -184,7 +183,7 @@ export function BilingualEditor({
 
   /* DeepL translation */
   const translateWithDeepL = useCallback(async () => {
-    const untranslated = segments.filter((s) => !s.translatedText && !s.isApproved);
+    const untranslated = segments.filter((s) => !s.translation && s.status !== "confirmed");
     if (untranslated.length === 0) {
       setMessage("Todos los segmentos ya tienen traducci\u00f3n");
       return;
@@ -196,7 +195,7 @@ export function BilingualEditor({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          segments: untranslated.map((s) => s.originalText),
+          segments: untranslated.map((s) => s.original),
           sourceLang,
           targetLang,
         }),
@@ -214,7 +213,12 @@ export function BilingualEditor({
         prev.map((seg) => {
           const idx = untranslated.findIndex((u) => u.id === seg.id);
           if (idx !== -1 && data.translations[idx]) {
-            return { ...seg, translatedText: data.translations[idx] };
+            return {
+              ...seg,
+              translation: data.translations[idx],
+              status: "suggestion" as const,
+              source: "deepl" as const,
+            };
           }
           return seg;
         }),
@@ -230,7 +234,15 @@ export function BilingualEditor({
   /* Edit segment */
   const handleTranslationChange = useCallback((id: string, text: string) => {
     setSegments((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, translatedText: text, isEdited: true } : s)),
+      prev.map((s) => {
+        if (s.id !== id) return s;
+        return {
+          ...s,
+          translation: text,
+          source: "manual" as const,
+          status: text ? "suggestion" as const : "empty" as const,
+        };
+      }),
     );
   }, []);
 
@@ -239,7 +251,10 @@ export function BilingualEditor({
     setSegments((prev) =>
       prev.map((s) => {
         if (s.id !== id) return s;
-        return { ...s, isApproved: s.translatedText ? true : s.isApproved };
+        return {
+          ...s,
+          status: s.translation ? "confirmed" as const : s.status,
+        };
       }),
     );
   }, []);
@@ -268,17 +283,46 @@ export function BilingualEditor({
     [segments],
   );
 
-  /* Save document to Blob */
+  /* Insert text at cursor in active segment */
+  const handleInsert = useCallback((segmentId: string, text: string) => {
+    const textarea = document.getElementById(`seg-textarea-${segmentId}`) as HTMLTextAreaElement | null;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    setSegments((prev) =>
+      prev.map((s) => {
+        if (s.id !== segmentId) return s;
+        const before = s.translation.slice(0, start);
+        const after = s.translation.slice(end);
+        return {
+          ...s,
+          translation: before + text + after,
+          source: "manual" as const,
+          status: "suggestion" as const,
+        };
+      }),
+    );
+
+    // Restore cursor position after React re-render
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + text.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  }, []);
+
+  /* Save to API */
   const save = useCallback(async () => {
     if (segmentsRef.current.length === 0) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/documents/${orderId}`, {
+      const res = await fetch(`/api/editor/${orderId}/segments`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           segments: segmentsRef.current,
-          status: docStatusRef.current,
         }),
       });
       if (res.ok) {
@@ -306,7 +350,7 @@ export function BilingualEditor({
   const deliver = useCallback(async () => {
     if (confirmedCount < totalCount) {
       setMessage(
-        `Confirma todos los segmentos antes de entregar (${emptyCount + suggestionCount} pendientes)`,
+        `Confirma todos los segmentos antes de entregar (${pendingCount} pendientes)`,
       );
       return;
     }
@@ -329,12 +373,7 @@ export function BilingualEditor({
     } catch {
       setMessage("Error de conexi\u00f3n");
     }
-  }, [confirmedCount, totalCount, emptyCount, suggestionCount, wordCount, orderId, save]);
-
-  /* Last-saved label */
-  const lastSavedLabel = lastSaved
-    ? `Guardado hace ${Math.max(1, Math.round((Date.now() - lastSaved.getTime()) / 60000))} min`
-    : "";
+  }, [confirmedCount, totalCount, pendingCount, wordCount, orderId, save]);
 
   /* ─── Render ──────────────────────────────────────────────────────────────── */
 
@@ -361,7 +400,6 @@ export function BilingualEditor({
           gap: 12,
         }}
       >
-        {/* Back link */}
         <a
           href="/dashboard/translator/orders"
           className="font-sans"
@@ -370,15 +408,12 @@ export function BilingualEditor({
           &larr; Pedidos
         </a>
 
-        {/* Separator */}
         <div style={{ width: 0.5, height: 20, background: "rgba(255,255,255,0.08)" }} />
 
-        {/* Document name */}
         <span className="font-sans" style={{ fontSize: 13, color: "#F0EBE0" }}>
           {clientName} &mdash; {documentType || "Documento"}
         </span>
 
-        {/* Lang badge — hidden on narrow */}
         {!isNarrow && (
           <span
             className="font-mono"
@@ -394,7 +429,6 @@ export function BilingualEditor({
           </span>
         )}
 
-        {/* Progress (centered) — hidden on narrow, info still in statusbar */}
         {!isNarrow && (
           <div
             style={{
@@ -429,10 +463,8 @@ export function BilingualEditor({
           </div>
         )}
 
-        {/* Spacer on narrow to push buttons right */}
         {isNarrow && <div style={{ flex: 1 }} />}
 
-        {/* Save ghost */}
         <button
           onClick={save}
           disabled={saving}
@@ -451,7 +483,6 @@ export function BilingualEditor({
           {saving ? "Guardando..." : "Guardar"}
         </button>
 
-        {/* Deliver amber */}
         <button
           onClick={deliver}
           className="font-sans"
@@ -471,138 +502,43 @@ export function BilingualEditor({
       </div>
 
       {/* ─── Panel Headers ─── */}
-      {isNarrow ? (
-        /* ─── Narrow: single toggle bar ─── */
-        <div
-          style={{
-            height: 36,
-            minHeight: 36,
-            background: "#112A1C",
-            display: "flex",
-            alignItems: "stretch",
-          }}
-        >
-          <button
-            onClick={() => setMobilePanel("pdf")}
-            style={panelToggleStyle(mobilePanel === "pdf")}
-          >
-            PDF
-          </button>
-          <div style={{ width: 1, background: "rgba(255,255,255,0.08)" }} />
-          <button
-            onClick={() => setMobilePanel("editor")}
-            style={panelToggleStyle(mobilePanel === "editor")}
-          >
-            Traducci&oacute;n
-          </button>
-        </div>
-      ) : (
-        /* ─── Wide: two-column headers (32px) ─── */
-        <div
-          style={{
-            height: 32,
-            minHeight: 32,
-            background: "#112A1C",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-          }}
-        >
-          {/* Left header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "0 16px",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                className="font-mono"
-                style={{ fontSize: 9, color: "#3A6A4A", textTransform: "uppercase", letterSpacing: 1 }}
-              >
-                Documento original
-              </span>
-              {pdfTotalPages > 0 && (
-                <span className="font-mono" style={{ fontSize: 8, color: "#6A9A7A" }}>
-                  PDF &middot; P&aacute;g. {pdfPage}/{pdfTotalPages}
-                </span>
-              )}
-            </div>
-            <div style={{ display: "flex" }}>
-              <button onClick={() => setLeftView("pdf")} style={tabStyle(leftView === "pdf")}>
-                PDF
-              </button>
-              <button onClick={() => setLeftView("text")} style={tabStyle(leftView === "text")}>
-                Texto
-              </button>
-            </div>
-          </div>
+      <PanelHeaders
+        isNarrow={isNarrow}
+        leftView={leftView}
+        rightView={rightView}
+        mobilePanel={mobilePanel}
+        targetLang={targetLang}
+        pdfPage={pdfPage}
+        pdfTotalPages={pdfTotalPages}
+        translating={translating}
+        segmentCount={segments.length}
+        onLeftViewChange={setLeftView}
+        onRightViewChange={setRightView}
+        onMobilePanelChange={setMobilePanel}
+        onTranslateDeepL={translateWithDeepL}
+      />
 
-          {/* Right header */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "0 16px",
-              borderLeft: "0.5px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                className="font-mono"
-                style={{ fontSize: 9, color: "#3A6A4A", textTransform: "uppercase", letterSpacing: 1 }}
-              >
-                Traducci&oacute;n
-              </span>
-              <span
-                className="font-mono"
-                style={{
-                  fontSize: 8,
-                  color: "#C9882A",
-                  background: "rgba(201,136,42,0.12)",
-                  padding: "1px 6px",
-                  borderRadius: 2,
-                }}
-              >
-                {LANG_NAMES[targetLang] || targetLang}
-              </span>
-              <button
-                onClick={translateWithDeepL}
-                disabled={translating || segments.length === 0}
-                className="font-mono"
-                style={{
-                  fontSize: 8,
-                  color: "#4A8A5A",
-                  background: "rgba(74,138,90,0.12)",
-                  border: "none",
-                  padding: "1px 6px",
-                  borderRadius: 2,
-                  cursor: "pointer",
-                  opacity: translating ? 0.5 : 1,
-                }}
-              >
-                {translating ? "Traduciendo..." : "DeepL"}
-              </button>
-            </div>
-            <div style={{ display: "flex" }}>
-              <button
-                onClick={() => setRightView("segments")}
-                style={tabStyle(rightView === "segments")}
-              >
-                Segmentos
-              </button>
-              <button
-                onClick={() => setRightView("preview")}
-                style={tabStyle(rightView === "preview")}
-              >
-                Preview
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ─── Template Banner ─── */}
+      {templateInfo && !templateDismissed && segments.length === 0 && (
+        <TemplateBanner
+          template={templateInfo}
+          onUse={() => {
+            setMessage(`Plantilla "${templateInfo.label}" seleccionada (carga en próxima versión)`);
+            setTemplateDismissed(true);
+          }}
+          onSkip={() => setTemplateDismissed(true)}
+          onBrowse={() => {
+            setMessage("Explorar plantillas (próximamente)");
+          }}
+        />
       )}
+
+      {/* ─── Memory Bar ─── */}
+      <MemoryBar
+        identicalCount={memoryStats.identicalCount}
+        similarCount={memoryStats.similarCount}
+        glossaryCount={memoryStats.glossaryCount}
+      />
 
       {/* ─── Message bar ─── */}
       {message && (
@@ -621,7 +557,7 @@ export function BilingualEditor({
 
       {/* ─── Body ─── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left: PDF Panel — hidden on narrow when editor tab is active */}
+        {/* Left: PDF Panel */}
         <div
           style={{
             width: isNarrow ? "100%" : "50%",
@@ -632,7 +568,7 @@ export function BilingualEditor({
           <PdfPanel
             pdfUrl={originalFileUrl}
             viewMode={leftView}
-            segments={segments.map((s) => ({ originalText: s.originalText, id: s.id }))}
+            segments={segments.map((s) => ({ original: s.original, id: s.id }))}
             activeSegmentId={activeSegmentId}
             currentPage={pdfPage}
             totalPages={pdfTotalPages}
@@ -641,79 +577,64 @@ export function BilingualEditor({
           />
         </div>
 
-        {/* Right: Segments / Preview — hidden on narrow when pdf tab is active */}
+        {/* Right: Segments / Preview + Tools sidebar */}
         <div
           style={{
             width: isNarrow ? "100%" : "50%",
             display: isNarrow && mobilePanel !== "editor" ? "none" : "flex",
-            flexDirection: "column",
             overflow: "hidden",
           }}
         >
-          {rightView === "segments" ? (
-            <>
-              {/* DeepL button row — shown on narrow since the header is replaced by toggle */}
-              {isNarrow && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "6px 16px",
-                    background: "#FAFAF5",
-                    borderBottom: "0.5px solid #E8E2D8",
-                  }}
-                >
-                  <span
-                    className="font-mono"
+          {/* Main editor area */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {rightView === "segments" ? (
+              <>
+                {/* DeepL button row — shown on narrow */}
+                {isNarrow && (
+                  <div
                     style={{
-                      fontSize: 8,
-                      color: "#C9882A",
-                      background: "rgba(201,136,42,0.12)",
-                      padding: "1px 6px",
-                      borderRadius: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "6px 16px",
+                      background: "#FAFAF5",
+                      borderBottom: "0.5px solid #E8E2D8",
                     }}
                   >
-                    {LANG_NAMES[targetLang] || targetLang}
-                  </span>
-                  <button
-                    onClick={translateWithDeepL}
-                    disabled={translating || segments.length === 0}
-                    className="font-mono"
-                    style={{
-                      fontSize: 8,
-                      color: "#4A8A5A",
-                      background: "rgba(74,138,90,0.12)",
-                      border: "none",
-                      padding: "1px 6px",
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      opacity: translating ? 0.5 : 1,
-                    }}
-                  >
-                    {translating ? "Traduciendo..." : "DeepL"}
-                  </button>
-                  <div style={{ marginLeft: "auto", display: "flex" }}>
-                    <button
-                      onClick={() => setRightView("segments")}
-                      style={tabStyle(true)}
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: 8,
+                        color: "#C9882A",
+                        background: "rgba(201,136,42,0.12)",
+                        padding: "1px 6px",
+                        borderRadius: 2,
+                      }}
                     >
-                      Segmentos
-                    </button>
+                      {LANG_NAMES[targetLang] || targetLang}
+                    </span>
                     <button
-                      onClick={() => setRightView("preview")}
-                      style={tabStyle(false)}
+                      onClick={translateWithDeepL}
+                      disabled={translating || segments.length === 0}
+                      className="font-mono"
+                      style={{
+                        fontSize: 8,
+                        color: "#4A8A5A",
+                        background: "rgba(74,138,90,0.12)",
+                        border: "none",
+                        padding: "1px 6px",
+                        borderRadius: 2,
+                        cursor: "pointer",
+                        opacity: translating ? 0.5 : 1,
+                      }}
                     >
-                      Preview
+                      {translating ? "Traduciendo..." : "DeepL"}
                     </button>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Segments */}
-              <div style={{ flex: 1, overflowY: "auto" }}>
+                {/* Segments or empty state */}
                 {segments.length === 0 ? (
-                  /* ─ Empty state ─ */
                   <div
                     style={{
                       padding: 32,
@@ -796,82 +717,74 @@ export function BilingualEditor({
                     </div>
                   </div>
                 ) : (
-                  segments.map((seg) => (
-                    <SegmentRow
-                      key={seg.id}
-                      segment={seg}
-                      isActive={seg.id === activeSegmentId}
-                      onTranslationChange={handleTranslationChange}
-                      onConfirm={handleConfirm}
-                      onFocus={handleFocus}
-                      onMoveNext={() => moveToNext(seg.id)}
-                    />
-                  ))
+                  <SegmentList
+                    segments={segments}
+                    activeSegmentId={activeSegmentId}
+                    onTranslationChange={handleTranslationChange}
+                    onConfirm={handleConfirm}
+                    onFocus={handleFocus}
+                    onMoveNext={moveToNext}
+                  />
                 )}
-              </div>
 
-              {/* Preview drawer (collapsible at bottom) */}
-              {segments.length > 0 && (
-                <PreviewDrawer
-                  segments={segments}
-                  isOpen={previewOpen}
-                  onToggle={() => setPreviewOpen(!previewOpen)}
-                  translatorName={translatorName}
-                  maecNumber={maecNumber}
-                  sourceLang={sourceLang}
-                  targetLang={targetLang}
+                {/* Insert bar */}
+                <InsertBar
+                  activeSegmentId={activeSegmentId}
+                  onInsert={handleInsert}
+                  visible={insertBarVisible && segments.length > 0}
                 />
-              )}
-            </>
-          ) : (
-            /* Full preview mode */
-            <PreviewDrawer
-              segments={segments}
-              isOpen={true}
-              onToggle={() => {}}
-              translatorName={translatorName}
-              maecNumber={maecNumber}
-              sourceLang={sourceLang}
-              targetLang={targetLang}
-              fullMode
+
+                {/* Preview drawer (collapsible at bottom) */}
+                {segments.length > 0 && (
+                  <PreviewDrawer
+                    segments={segments}
+                    isOpen={previewOpen}
+                    onToggle={() => setPreviewOpen(!previewOpen)}
+                    translatorName={translatorName}
+                    maecNumber={maecNumber}
+                    sourceLang={sourceLang}
+                    targetLang={targetLang}
+                  />
+                )}
+              </>
+            ) : (
+              /* Full preview mode */
+              <PreviewDrawer
+                segments={segments}
+                isOpen={true}
+                onToggle={() => {}}
+                translatorName={translatorName}
+                maecNumber={maecNumber}
+                sourceLang={sourceLang}
+                targetLang={targetLang}
+                fullMode
+              />
+            )}
+          </div>
+
+          {/* Tools sidebar — hidden on narrow */}
+          {!isNarrow && (
+            <ToolsSidebar
+              saving={saving}
+              translating={translating}
+              insertBarVisible={insertBarVisible}
+              previewOpen={previewOpen}
+              onSave={save}
+              onTranslateDeepL={translateWithDeepL}
+              onToggleInsertBar={() => setInsertBarVisible(!insertBarVisible)}
+              onTogglePreview={() => setPreviewOpen(!previewOpen)}
             />
           )}
         </div>
       </div>
 
-      {/* ─── Statusbar 26px ─── */}
-      <div
-        className="font-mono"
-        style={{
-          height: 26,
-          minHeight: 26,
-          background: "#112A1C",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 16px",
-          gap: 16,
-          fontSize: 8,
-          color: "#2A5A3A",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#4A8A5A" }} />
-          <span>{confirmedCount} confirmados</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#C9882A" }} />
-          <span>{suggestionCount} sugerencia DeepL</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#3A3A3A" }} />
-          <span>{emptyCount} pendientes</span>
-        </div>
-        <span style={{ marginLeft: "auto" }}>
-          {wordCount} palabras
-          {price ? ` \u00b7 ${(price * 1.21).toFixed(0)}\u20ac + IVA` : ""}
-          {lastSavedLabel ? ` \u00b7 ${lastSavedLabel}` : ""}
-        </span>
-      </div>
+      {/* ─── Status bar ─── */}
+      <StatusBar
+        segments={segments}
+        wordCount={wordCount}
+        price={price}
+        lastSaved={lastSaved}
+      />
     </div>
   );
 }

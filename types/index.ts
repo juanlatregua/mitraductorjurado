@@ -29,6 +29,7 @@ declare module "next-auth/jwt" {
 
 // ─── EDITOR BILINGÜE ──────────────────────────────────────────────────────────
 
+/** @deprecated Use EditorSegment instead */
 export interface TranslationSegment {
   id: string;
   index: number;
@@ -38,6 +39,7 @@ export interface TranslationSegment {
   isApproved: boolean;
 }
 
+/** @deprecated Use EditorState instead */
 export interface BilingualDocument {
   orderId: string;
   documentType: string | null;
@@ -47,6 +49,34 @@ export interface BilingualDocument {
   segments: TranslationSegment[];
   status: "draft" | "reviewing" | "approved";
 }
+
+// ─── S16a: EDITOR SEGMENT MODEL ─────────────────────────────────────────────
+
+export type SegmentStatus = "confirmed" | "suggestion" | "memory" | "template" | "empty";
+export type SegmentSource = "deepl" | "memory" | "template" | "manual" | "claude";
+
+export interface EditorSegment {
+  id: string;
+  index: number;
+  original: string;
+  translation: string;
+  status: SegmentStatus;
+  source: SegmentSource;
+  memoryScore?: number | null;
+}
+
+export interface EditorState {
+  segments: EditorSegment[];
+  docStatus: "draft" | "reviewing" | "approved";
+}
+
+export const SEGMENT_STATUS_COLORS: Record<SegmentStatus, { dot: string; text: string; bg: string; style: "normal" | "italic" }> = {
+  confirmed: { dot: "#4A8A5A", text: "#1C1917", bg: "transparent", style: "normal" },
+  suggestion: { dot: "#C9882A", text: "#2D6A4F", bg: "transparent", style: "italic" },
+  memory: { dot: "#2D8A5A", text: "#1C1917", bg: "rgba(74,138,90,0.1)", style: "normal" },
+  template: { dot: "#8A6A2A", text: "#1C1917", bg: "rgba(201,136,42,0.1)", style: "normal" },
+  empty: { dot: "#E8E2D8", text: "#bbb", bg: "transparent", style: "normal" },
+};
 
 // ─── PLANTILLAS ───────────────────────────────────────────────────────────────
 

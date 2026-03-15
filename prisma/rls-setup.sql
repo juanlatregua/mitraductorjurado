@@ -79,6 +79,21 @@ CREATE POLICY tenant_isolation_review ON "Review"
 CREATE POLICY tenant_isolation_widget ON "WidgetLead"
   USING ("tenantId" = current_setting('app.tenant_id', true));
 
+-- Subscription
+ALTER TABLE "Subscription" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_subscription ON "Subscription"
+  USING ("tenantId" = current_setting('app.tenant_id', true));
+
+-- Segment
+ALTER TABLE "Segment" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_segment ON "Segment"
+  USING ("tenantId" = current_setting('app.tenant_id', true));
+
+-- GlossaryEntry
+ALTER TABLE "GlossaryEntry" ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation_glossary ON "GlossaryEntry"
+  USING ("tenantId" = current_setting('app.tenant_id', true));
+
 -- ─── PLANTILLAS: ACCESO ESPECIAL ─────────────────────────────────────────────
 -- DocumentTemplate es compartida: lectura global, escritura solo admin.
 -- La política tenant_isolation ya cubre escritura. Añadimos lectura abierta.

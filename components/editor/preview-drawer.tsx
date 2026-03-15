@@ -1,10 +1,10 @@
 "use client";
 
-import type { TranslationSegment } from "@/types";
+import type { EditorSegment } from "@/types";
 import { LANG_NAMES } from "@/lib/constants";
 
 interface Props {
-  segments: TranslationSegment[];
+  segments: EditorSegment[];
   isOpen: boolean;
   onToggle: () => void;
   translatorName: string;
@@ -24,7 +24,7 @@ export function PreviewDrawer({
   targetLang,
   fullMode = false,
 }: Props) {
-  const pendingCount = segments.filter((s) => !s.isApproved).length;
+  const pendingCount = segments.filter((s) => s.status !== "confirmed").length;
   const sourceLangName = LANG_NAMES[sourceLang] || sourceLang;
   const targetLangName = LANG_NAMES[targetLang] || targetLang;
 
@@ -83,14 +83,26 @@ export function PreviewDrawer({
           color: "#1C1917",
         }}
       >
-        {/* Concatenated document body */}
         {segments.map((seg) => (
-          <p key={seg.id} style={{ marginBottom: 8 }}>
-            {seg.isApproved ? (
-              seg.translatedText
-            ) : seg.translatedText ? (
+          <p
+            key={seg.id}
+            style={{
+              marginBottom: 8,
+              background:
+                seg.status === "memory"
+                  ? "rgba(74,138,90,0.06)"
+                  : seg.status === "template"
+                    ? "rgba(201,136,42,0.06)"
+                    : "transparent",
+              padding: seg.status === "memory" || seg.status === "template" ? "2px 6px" : 0,
+              borderRadius: 2,
+            }}
+          >
+            {seg.status === "confirmed" || seg.status === "memory" || seg.status === "template" ? (
+              seg.translation
+            ) : seg.translation ? (
               <span style={{ color: "#C9882A", fontStyle: "italic" }}>
-                {seg.translatedText}
+                {seg.translation}
               </span>
             ) : (
               <span style={{ color: "#C9882A", fontStyle: "italic" }}>
@@ -102,10 +114,8 @@ export function PreviewDrawer({
 
         {segments.length > 0 && (
           <>
-            {/* Separator */}
             <hr style={{ border: "none", borderTop: "0.5px solid #E8E2D8", margin: "20px 0" }} />
 
-            {/* Certification formula */}
             <p style={{ fontSize: 11, lineHeight: 1.6, color: "#333" }}>
               Don/Do&ntilde;a {translatorName}, Traductor/a e Int&eacute;rprete Jurado de{" "}
               {sourceLangName} n&ordm; {maecNumber}, en virtud del t&iacute;tulo otorgado por el
@@ -123,7 +133,6 @@ export function PreviewDrawer({
               Fdo.: {translatorName}
             </p>
 
-            {/* Stamp */}
             <div
               style={{
                 marginTop: 16,

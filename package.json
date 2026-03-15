@@ -14,6 +14,7 @@
     "db:seed": "ts-node prisma/seed.ts",
     "seed-maec": "ts-node --compiler-options {\"module\":\"commonjs\"} prisma/seed-maec.ts",
     "db:rls": "psql $DATABASE_URL -f prisma/rls-setup.sql",
+    "migrate-segments": "ts-node --compiler-options {\"module\":\"commonjs\"} prisma/migrate-segments.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
