@@ -9,6 +9,7 @@ import { StatusBar } from "./status-bar";
 import { ToolsSidebar } from "./tools-sidebar";
 import { InsertBar } from "./insert-bar";
 import { TemplateBanner } from "./template-banner";
+import { TemplatePicker } from "./template-picker";
 import { MemoryBar } from "./memory-bar";
 import { LANG_NAMES } from "@/lib/constants";
 import type { EditorSegment } from "@/types";
@@ -67,8 +68,15 @@ export function BilingualEditor({
     type: string;
     language: string;
     category: string;
+    structure?: {
+      fixedFields?: { key: string; label: string; type: string; options?: string[] }[];
+      variables?: { key: string; label: string; placeholder?: string }[];
+    };
+    exampleAnon?: string | null;
   } | null>(null);
   const [templateDismissed, setTemplateDismissed] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
 
   // Memory stats (stub)
   const [memoryStats, setMemoryStats] = useState({ identicalCount: 0, similarCount: 0, glossaryCount: 0 });
@@ -286,14 +294,13 @@ export function BilingualEditor({
   /* Insert text at cursor in active segment */
   const handleInsert = useCallback((segmentId: string, text: string) => {
     const textarea = document.getElementById(`seg-textarea-${segmentId}`) as HTMLTextAreaElement | null;
-    if (!textarea) return;
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
 
     setSegments((prev) =>
       prev.map((s) => {
         if (s.id !== segmentId) return s;
+        // If confirmed, un-confirm so we can edit — append at end
+        const start = textarea && !textarea.disabled ? textarea.selectionStart : s.translation.length;
+        const end = textarea && !textarea.disabled ? textarea.selectionEnd : s.translation.length;
         const before = s.translation.slice(0, start);
         const after = s.translation.slice(end);
         return {
@@ -307,11 +314,90 @@ export function BilingualEditor({
 
     // Restore cursor position after React re-render
     setTimeout(() => {
-      textarea.focus();
-      const newPos = start + text.length;
-      textarea.setSelectionRange(newPos, newPos);
-    }, 0);
+      const el = document.getElementById(`seg-textarea-${segmentId}`) as HTMLTextAreaElement | null;
+      if (el) {
+        el.focus();
+        const seg = segmentsRef.current.find((s) => s.id === segmentId);
+        if (seg) {
+          const newPos = seg.translation.length;
+          el.setSelectionRange(newPos, newPos);
+        }
+      }
+    }, 50);
   }, []);
+
+  /* Apply template — generate segments from exampleAnon or structure */
+  const applyTemplate = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (tpl: any) => {
+      setTemplateLoading(true);
+
+      // Use exampleAnon text to create segments
+      const text: string = tpl.exampleAnon || "";
+      if (!text.trim()) {
+        // No example — generate from fixedFields + variables
+        const fields = [
+          ...(tpl.structure?.fixedFields || []),
+          ...(tpl.structure?.variables || []),
+        ];
+        if (fields.length === 0) {
+          setMessage("Esta plantilla no tiene contenido de ejemplo.");
+          setTemplateLoading(false);
+          return;
+        }
+        const newSegs: EditorSegment[] = fields.map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (field: any, i: number) => ({
+            id: `tpl-${Date.now()}-${i}`,
+            index: i,
+            original: `[${field.label}]`,
+            translation: field.placeholder || "",
+            status: field.placeholder ? ("template" as const) : ("empty" as const),
+            source: "template" as const,
+            memoryScore: null,
+          }),
+        );
+        setSegments(newSegs);
+        setMessage(`${newSegs.length} campos cargados desde plantilla "${tpl.label}"`);
+        setTemplateDismissed(true);
+        setTemplatePickerOpen(false);
+        setTemplateLoading(false);
+        return;
+      }
+
+      // Parse exampleAnon into paragraphs as segments
+      const paragraphs = text
+        .split(/\n\n+/)
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+
+      // If single block, split by newlines
+      const lines =
+        paragraphs.length <= 1
+          ? text
+              .split(/\n/)
+              .map((s: string) => s.trim())
+              .filter((s: string) => s.length > 0)
+          : paragraphs;
+
+      const newSegs: EditorSegment[] = lines.map((line: string, i: number) => ({
+        id: `tpl-${Date.now()}-${i}`,
+        index: i,
+        original: line,
+        translation: "",
+        status: "template" as const,
+        source: "template" as const,
+        memoryScore: null,
+      }));
+
+      setSegments(newSegs);
+      setMessage(`${newSegs.length} segmentos cargados desde plantilla "${tpl.label}"`);
+      setTemplateDismissed(true);
+      setTemplatePickerOpen(false);
+      setTemplateLoading(false);
+    },
+    [],
+  );
 
   /* Save to API */
   const save = useCallback(async () => {
@@ -519,17 +605,32 @@ export function BilingualEditor({
       />
 
       {/* ─── Template Banner ─── */}
-      {templateInfo && !templateDismissed && segments.length === 0 && (
+      {templateInfo && !templateDismissed && (
         <TemplateBanner
           template={templateInfo}
-          onUse={() => {
-            setMessage(`Plantilla "${templateInfo.label}" seleccionada (carga en próxima versión)`);
-            setTemplateDismissed(true);
+          loading={templateLoading}
+          onUse={(tpl) => {
+            if (segments.length > 0) {
+              if (!window.confirm("Esto reemplazar\u00e1 los segmentos actuales. \u00bfContinuar?")) return;
+            }
+            applyTemplate(tpl);
           }}
           onSkip={() => setTemplateDismissed(true)}
-          onBrowse={() => {
-            setMessage("Explorar plantillas (próximamente)");
+          onBrowse={() => setTemplatePickerOpen(true)}
+        />
+      )}
+
+      {/* ─── Template Picker Modal ─── */}
+      {templatePickerOpen && (
+        <TemplatePicker
+          orderId={orderId}
+          onSelect={(tpl) => {
+            if (segments.length > 0) {
+              if (!window.confirm("Esto reemplazar\u00e1 los segmentos actuales. \u00bfContinuar?")) return;
+            }
+            applyTemplate(tpl);
           }}
+          onClose={() => setTemplatePickerOpen(false)}
         />
       )}
 

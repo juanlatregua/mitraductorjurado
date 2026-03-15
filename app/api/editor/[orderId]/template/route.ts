@@ -8,7 +8,8 @@ interface Params {
 }
 
 // GET — Detect matching DocumentTemplate by type + language
-export async function GET(_req: NextRequest, { params }: Params) {
+// Also supports ?all=1 to list all templates for the same language
+export async function GET(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
@@ -31,6 +32,29 @@ export async function GET(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
   }
 
+  const listAll = req.nextUrl.searchParams.get("all") === "1";
+
+  // List all templates for this language
+  if (listAll) {
+    const templates = await prisma.documentTemplate.findMany({
+      where: {
+        language: order.sourceLang,
+        active: true,
+      },
+      select: {
+        id: true,
+        label: true,
+        type: true,
+        language: true,
+        category: true,
+        structure: true,
+        exampleAnon: true,
+      },
+      orderBy: { category: "asc" },
+    });
+    return NextResponse.json({ templates });
+  }
+
   // No document type detected — no template match
   if (!order.documentType) {
     return NextResponse.json({ template: null });
@@ -48,6 +72,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       type: true,
       language: true,
       category: true,
+      structure: true,
+      exampleAnon: true,
     },
   });
 
