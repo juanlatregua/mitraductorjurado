@@ -78,8 +78,9 @@ export function BilingualEditor({
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(false);
 
-  // Memory stats (stub)
+  // Memory stats
   const [memoryStats, setMemoryStats] = useState({ identicalCount: 0, similarCount: 0, glossaryCount: 0 });
+  const memoryAppliedRef = useRef(false);
 
   /* — Responsive: detect < 1200px — */
   useEffect(() => {
@@ -104,13 +105,46 @@ export function BilingualEditor({
       .catch(() => {});
   }, [orderId]);
 
-  /* — Fetch memory stats on mount — */
+  /* — Fetch memory stats + apply matches to empty segments — */
   useEffect(() => {
+    if (memoryAppliedRef.current) return;
+    // Wait until segments are loaded before querying memory
+    if (segments.length === 0) return;
+
+    memoryAppliedRef.current = true;
     fetch(`/api/editor/${orderId}/memory`)
       .then((r) => r.json())
-      .then((data) => setMemoryStats(data))
+      .then((data) => {
+        setMemoryStats({
+          identicalCount: data.identicalCount || 0,
+          similarCount: data.similarCount || 0,
+          glossaryCount: data.glossaryCount || 0,
+        });
+
+        // Apply memory matches to empty/suggestion segments
+        const matches: Array<{ index: number; match: { translation: string; similarity: number } }> =
+          data.matches || [];
+        if (matches.length > 0) {
+          setSegments((prev) =>
+            prev.map((seg) => {
+              // Only apply to empty or suggestion segments (not confirmed/template)
+              if (seg.status === "confirmed" || seg.status === "template") return seg;
+              const hit = matches.find((m) => m.index === seg.index);
+              if (!hit) return seg;
+              return {
+                ...seg,
+                translation: hit.match.translation,
+                status: "memory" as const,
+                source: "memory" as const,
+                memoryScore: hit.match.similarity,
+              };
+            }),
+          );
+        }
+      })
       .catch(() => {});
-  }, [orderId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, segments.length]);
 
   /* — Derived — */
   const confirmedCount = segments.filter((s) => s.status === "confirmed").length;

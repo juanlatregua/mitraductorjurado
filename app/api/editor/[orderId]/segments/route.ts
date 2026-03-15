@@ -101,6 +101,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 // PUT — Upsert segments + dual-write to translationData JSON
+// Also auto-saves glossary entries for confirmed segments
 export async function PUT(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -113,7 +114,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const order = await prisma.order.findUnique({
     where: { id: params.orderId },
-    select: { translatorId: true, tenantId: true },
+    select: { translatorId: true, tenantId: true, sourceLang: true, targetLang: true },
   });
 
   if (!order || (order.translatorId !== session.user.id && session.user.role !== "admin")) {
@@ -130,6 +131,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 
   const { segments, docStatus } = parsed.data;
+  const languagePair = `${order.sourceLang}-${order.targetLang}`;
 
   await prisma.$transaction(async (tx) => {
     // Delete existing segments and recreate (simpler than individual upserts)
@@ -169,6 +171,42 @@ export async function PUT(req: NextRequest, { params }: Params) {
       data: { translationData: JSON.stringify(legacyData) },
     });
   });
+
+  // Auto-save glossary entries for confirmed segments (fire-and-forget)
+  const confirmed = segments.filter(
+    (s) => s.status === "confirmed" && s.translation && s.original,
+  );
+  if (confirmed.length > 0) {
+    // Run outside transaction — non-critical, best-effort
+    Promise.all(
+      confirmed.map((seg) =>
+        prisma.glossaryEntry
+          .upsert({
+            where: {
+              translatorId_source_languagePair: {
+                translatorId: order.translatorId,
+                source: seg.original,
+                languagePair,
+              },
+            },
+            update: {
+              target: seg.translation,
+              usageCount: { increment: 1 },
+            },
+            create: {
+              translatorId: order.translatorId,
+              source: seg.original,
+              target: seg.translation,
+              languagePair,
+              usageCount: 1,
+            },
+          })
+          .catch(() => {
+            // Ignore glossary errors — non-critical
+          }),
+      ),
+    ).catch(() => {});
+  }
 
   return NextResponse.json({ ok: true });
 }
